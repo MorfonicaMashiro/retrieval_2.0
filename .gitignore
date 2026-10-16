@@ -1,0 +1,8 @@
+*.asv
+
+# 仅保留当前论文配准结果和质检图；其他文件可由脚本重新生成。
+processed/*
+!processed/pairs_2017_same_day_v2.csv
+!processed/pairs_2017_same_day_v2.mat
+figures/*
+!figures/pairs_2017_coverage.png
