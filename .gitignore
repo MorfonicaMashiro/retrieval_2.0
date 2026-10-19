@@ -4,5 +4,12 @@
 processed/*
 !processed/pairs_2017_same_day_v2.csv
 !processed/pairs_2017_same_day_v2.mat
+!processed/tb_forward_table1_validation.csv
+!processed/tb_forward_layer_sensitivity.csv
 figures/*
 !figures/pairs_2017_coverage.png
+
+# 文档生成过程的渲染缓存和 Word 临时锁文件不入库。
+docs/_render*/
+docs/_forward_model_equations/
+docs/~$*.docx

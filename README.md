@@ -1,6 +1,6 @@
 # 2017 论文数据配准（MATLAB）
 
-本目录已完成 2017 年论文第 5.1 节的 **OIB—SMOS 同日配准、3×3 空间取样、四变量算术均值**。二分求解、理论解空间扫描和验证拟合的函数也已写好；辐射前向模型尚缺完整实现，当前不输出实际反演值。在 MATLAB R2023a 中进入本目录运行 `main`。需要 Mapping Toolbox。
+本目录已完成 2017 年论文第 5.1 节的 **OIB—SMOS 同日配准、3×3 空间取样、四变量算术均值**，并完成可审计的 1.4 GHz 多层前向亮温实现。二分求解、理论解空间扫描和验证拟合的函数也已写好；由于作者未公开完整离散代码，当前先输出论文表 1 与层数敏感性校验，不默认启动全量反演。在 MATLAB R2023a 中进入本目录运行 `main`。需要 Mapping Toolbox。
 
 ## 论文所说的四个均值
 
@@ -52,7 +52,11 @@ flowchart LR
 
 `solution_space_2017.m` 按第 2.2 节扫描 0–10 m 冰厚、0–1 m 雪深，依据静力平衡计算两种干舷并排除负冰面干舷；默认扫描间隔为 5 cm / 1 cm，**这是代码设置而非论文指定数值**。`plot/plot_solution_space_2017.m` 可绘制对应图 3/4 的 TB—干舷解空间。`fit_retrieval_2017.m` 计算图 11/12 使用的自由斜率最小二乘拟合、固定斜率为 1 的偏差和 RMSE。启用求解后，主程序也会按论文用模拟 OIB TB 与 SMOS TB 相差不超过 1.5 K 的样本另算一组验证统计。
 
-`tb_forward_2017.m` 仍是式 (1) 的接口。论文 [32] 给出了多层结构、盐度剖面与混合像元公式，但没有在这两篇论文中完整列出可直接计算冰面辐射亮温的全部介电/辐射传输细节。`runSolver=false`，**不会输出实际反演值或理论解空间**；打开时若模型尚未补全，会明确报错。OIB 的 `hi` 和 `hs` 保留在 `inputs` 中供将来验证。
+`tb_forward.m` 已补全式 (1) 的数值链：冰雪稳态温度廓线、FYI/MYI 盐度、Cox–Weeks 卤水体积分数、Vant 海冰介电常数、Tiuri 干雪介电常数、Klein–Swift 海水介电常数、层间 Fresnel 系数及 Burke 一阶非相干辐射递推。默认采用 **20 层冰、1 层雪**，输出 0–40°、H/V 极化算术平均，并加入可关闭的 2.7 K 宇宙背景反射；未把论文验证所得的 1.6–1.8 K 偏差硬编码成大气修正。
+
+2017 联合反演论文正文只明确说采用改进的 `multi-layer formulation`，没有直接写“20 层”。同年文献 [32] 的层数敏感性试验写明使用 `N=20`；周璐博士论文进一步明确为 **海冰 20 层、雪 1 层**。因此，本项目把 20/1 作为目标复现配置，把 `model.nIceLayers=1` 仅作为单层敏感性基线，不能把单层结果当作 2017 联合反演的最终前向模型。
+
+`validate_tb_forward.m` 对照论文表 1 的 8 个理想场景，并比较 1/20/100 层。本实现的表 1 RMSE 为约 2.09 K、平均偏差为约 −1.81 K；5 m 厚冰场景的 20→100 层差异小于 0.1 K，但薄冰场景仍有更强层数敏感性。这个结果与论文报告的约 1.6–1.8 K 模拟偏差量级接近，但尚不是作者代码级完全闭合。因此 `main_inversion.m` 保持 `runSolver=false`，先保留前向验证结果，不输出未经确认的全量反演值。OIB 的 `hi` 和 `hs` 继续保留供验证。
 
 ### 亮温前向模型的文献链
 
@@ -64,7 +68,7 @@ flowchart LR
 2. [Kaleschke 等（2010）第 2.2 节](https://tc.copernicus.org/articles/4/583/2010/)：给出冰的介电常数随盐水体积分数变化的公式，以及 1.4 GHz 的冰型系数表；其原始例子主要是**无雪单冰层**，不能直接代替当前多层雪冰模型。
 3. [Zhou 等（2018）附录 A](https://tc.copernicus.org/articles/12/993/2018/)：同一作者对所用模型补充了 FYI/MYI 盐度剖面、热导率、雪和冰介电常数、盐水体积分数及顶层亮温式；其余光学/辐射传输细节继续引用前述模型及更早实验关系。
 
-因此不必再找 OIB“密集度”补进当前反演。真正待实现的是 `TBice` 的逐层辐射计算，并对照论文图 2/3 与表 1 的模拟 TB 检查实现。公开的其他 Burke 模型实现可作编程参考，但不能未经核对就视为 Zhou 等（2017）的原作者代码。
+因此不必再找 OIB“密集度”补进当前反演。`TBice` 的逐层辐射计算已经实现，并以论文表 1、FYI/MYI 约 12 K 冰型差异以及厚冰层数收敛作回归检查。公开的 Burke 模型及 NCAR 的 Klein–Swift 海水介电实现只作为公式补全依据；当前代码明确标为可审计重建，不能称为 Zhou 等（2017）的原作者代码。
 
 **比较亮温所在层级：**SMOS 的 L1C 是大气层顶亮温，ICDC L3B 对 L1C 的水平/垂直极化与 0–40°入射角做日平均；[Kaleschke 等（2012）](https://doi.org/10.1029/2012GL050916)和[ICDC L3B 说明](https://www.cen.uni-hamburg.de/en/icdc/data/cryosphere/docs-cryo/documentation-smos-tbs.pdf)分别说明了这两步。Zhou 等（2018）附录 A1 写出 `TB_TOA`；在纯冰覆盖 `c=1` 时为 `TBice + (1-eice)*2.7 K + ΔTB_atm`。这里 `TBice` 是**海冰覆盖区的雪—冰—海水系统辐射分量**，不是冰表温度；海水仍是冰下的辐射边界。2017 年文献 [32] 的式 (5) 省写背景/大气项，并报告与 SMOS 比较的亮温偏差约 1.6 K。原论文固定的是水温、水盐度等输入参数，并未把 `TBice` 或 `TBwater` 固定为常数；附录 A1 也没有给出可直接计算逐日 `ΔTB_atm` 的完整方法。实现时必须明确采用哪一版亮温校正约定，不能把该偏差擅自解释成纯大气贡献。
 
@@ -90,9 +94,11 @@ main_inversion  % 查看逐条反演输入，目前不求物理解
 
 - `processed/pairs_2017_same_day_v2.csv`：每条记录一个 SMOS 中心格，包含 `day, flight, row, col, TB, FBsnow, hs, FBice, hi, nOIB, isMYI`。
 - `processed/pairs_2017_same_day_v2.mat`：同一配对表及各飞行日 `summary`；再次运行会直接读缓存。
+- `processed/tb_forward_table1_validation.csv`：论文表 1 的 8 个场景、当前模拟 TB、差值和卤水适用范围诊断。
+- `processed/tb_forward_layer_sensitivity.csv`：FYI/MYI 代表场景下 1/20/100 层亮温对比。
 - `figures/pairs_2017_coverage.png`：唯一的配准质检图，显示配对位置及九格内 OIB 样本数。
 
-此前探索阶段生成的其他图片及缓存仍保留在 `figures/`、`processed/`，当前 `main` 不再使用。配准质检由 `plot/plot_2017_pairs.m` 绘制；补全前向模型后，`main_inversion` 才会调用 `plot/plot_solution_space_2017.m` 输出雷达和激光两种理论解空间图。
+此前探索阶段生成的其他图片及缓存仍保留在 `figures/`、`processed/`，当前 `main` 不再使用。配准质检由 `plot/plot_2017_pairs.m` 绘制；待当前前向模型的剩余偏差被接受或进一步闭合后，可把 `main_inversion.m` 的 `runSolver` 改为 `true`，再输出雷达和激光两种理论解空间及逐条反演结果。
 
 需要重算时在 `main.m` 将 `useCache = false`，运行后可改回 `true`。图像只绘制数千个有效配对点，避免为全部原始航迹反复生成大图。
 

@@ -1,5 +1,6 @@
 % 2017 年论文反演入口。先运行 main 完成同日配准。
-% 当前前向辐射模型尚未实现，默认只准备输入；补全后开启 runSolver。
+% 前向辐射模型已实现并先做论文表 1 校验；完整逐条反演默认仍关闭，
+% 直到前向模型的剩余系统偏差和薄冰层数敏感性得到确认。
 
 matlabRoot = fileparts(mfilename('fullpath'));
 addpath(matlabRoot);
@@ -10,7 +11,7 @@ if ~isfile(cacheFile)
 end
 load(cacheFile, 'pairs');
 
-targetYears = 2012; % 可改为 [2012 2015]，仍对每条配对独立反演。
+targetYears = [2012 2015]; % 可改为 [2012 2015]/2012/2015，仍对每条配对独立反演。
 inputs = pairs(ismember(year(pairs.day), targetYears), ...
     {'day','flight','row','col','TB','FBice','FBsnow','isMYI','hi','hs'});
 if isempty(inputs), error('main_inversion:NoPairs', '所选年份没有配对。'); end
@@ -23,10 +24,15 @@ fprintf('%s：%d 个有效飞行日、%d 条同日配对。\n', ...
     strjoin(string(targetYears), ','), numel(unique(inputs.day)), height(inputs));
 fprintf('每条配对分别使用 TB+FBice 或 TB+FBsnow；OIB hi、hs 留作验证。\n');
 
-runSolver = false; % 完成 tb_forward_2017 的物理亮温计算后改为 true。
+validation = validate_tb_forward(fullfile(matlabRoot, 'processed'));
+fprintf(['前向模型表 1 校验：RMSE %.3f K，偏差 %.3f K；' ...
+    '结果已写入 processed。\n'], ...
+    validation.scenarioRMSEK, validation.scenarioBiasK);
+
+runSolver = false; % 接受当前前向模型校验边界后再改为 true。
 if runSolver
-    % 先检查前向模型；没有物理亮温函数时明确停止，不输出假解。
-    tb_forward_2017(1, 0.1, false, model);
+    % 先检查前向模型的标量调用。
+    tb_forward(1, 0.1, false, model);
     n = height(inputs);
     hiRadar = nan(n, 1); hsRadar = nan(n, 1);
     hiLaser = nan(n, 1); hsLaser = nan(n, 1);
@@ -36,10 +42,10 @@ if runSolver
     for k = 1:n
         [radar, ~] = invert_2017_pair( ...
             inputs.TB(k), inputs.FBice(k), "ice", inputs.isMYI(k), ...
-            model, @tb_forward_2017);
+            model, @tb_forward);
         [laser, ~] = invert_2017_pair( ...
             inputs.TB(k), inputs.FBsnow(k), "snow", inputs.isMYI(k), ...
-            model, @tb_forward_2017);
+            model, @tb_forward);
         nRadarRoots(k) = numel(radar);
         nLaserRoots(k) = numel(laser);
         if ~isempty(radar)
@@ -52,7 +58,7 @@ if runSolver
         if numel(laser) > 1
             hiLaserAlt(k) = laser(2).hi; hsLaserAlt(k) = laser(2).hs;
         end
-        tbFromOIB(k) = tb_forward_2017( ...
+        tbFromOIB(k) = tb_forward( ...
             inputs.hi(k), inputs.hs(k), inputs.isMYI(k), model);
     end
     results = addvars(inputs, hiRadar, hsRadar, hiLaser, hsLaser, ...
@@ -66,12 +72,13 @@ if runSolver
         'radarHs', fit_retrieval_2017(results.hs(nearTB), hsRadar(nearTB)), ...
         'laserHi', fit_retrieval_2017(results.hi(nearTB), hiLaser(nearTB)), ...
         'laserHs', fit_retrieval_2017(results.hs(nearTB), hsLaser(nearTB)));
-    spaceFYI = solution_space_2017(false, model, @tb_forward_2017);
-    spaceMYI = solution_space_2017(true, model, @tb_forward_2017);
+    spaceFYI = solution_space_2017(false, model, @tb_forward);
+    spaceMYI = solution_space_2017(true, model, @tb_forward);
     outputFile = fullfile(matlabRoot, 'processed', 'inversion_2017.mat');
     save(outputFile, 'results', 'fitAll', 'fitNear', 'spaceFYI', 'spaceMYI', 'model', '-v7.3');
     plot_solution_space_2017(spaceFYI, spaceMYI, fullfile(matlabRoot, 'figures'));
     fprintf('已保存反演与解空间：%s\n', outputFile);
 else
-    fprintf('二分求解器与拟合函数已备好；缺少物理亮温模型，当前停在反演输入准备阶段。\n');
+    fprintf(['二分求解器与拟合函数已备好；当前先保留前向亮温验证结果，' ...
+        '不把尚未完全闭合的前向模型直接扩展为全量反演。\n']);
 end
