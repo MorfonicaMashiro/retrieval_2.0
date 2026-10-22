@@ -1,6 +1,6 @@
 # 2017 论文数据配准（MATLAB）
 
-本目录已完成 2017 年论文第 5.1 节的 **OIB—SMOS 同日配准、3×3 空间取样、四变量算术均值**，并完成可审计的 1.4 GHz 多层前向亮温实现。二分求解、理论解空间扫描和验证拟合的函数也已写好；由于作者未公开完整离散代码，当前先输出论文表 1 与层数敏感性校验，不默认启动全量反演。在 MATLAB R2023a 中进入本目录运行 `main`。需要 Mapping Toolbox。
+本目录已完成 2017 年论文第 5.1 节的 **OIB—SMOS 同日配准、3×3 空间取样、四变量算术均值**，以及可审计的 1.4 GHz 多层前向亮温、二分求解、理论解空间扫描和验证拟合。当前 `main.m` 的 `yearsToProcess=[2012,2015]`，用于论文原始验证年份；已有四年扩展配准和反演结果包含 16,364 条配对。2013/2014 是本项目增加的扩展验证。在 MATLAB R2023a 中进入本目录运行相应入口。需要 Mapping Toolbox。
 
 ## 论文所说的四个均值
 
@@ -20,7 +20,7 @@ $$
 $$
 同一批样本用于四个均值，因此 `mean(FBice) = mean(FBsnow) - mean(hs)`。这里按 **原始点数**加权；九个格子不会先各算一个均值再等权平均。邻近中心格的九格窗口会重叠，一个 OIB 点可能对应多个 SMOS TB，这正是按每个中心格取样的结果。
 
-论文把 OIB 的 `FBice` 当作雷达干舷代理；它是雪面干舷减雪深得到的量，并非独立 CryoSat-2 观测。`hi` 和 `hs` 留作后续验证。目前脚本只存配对表，**不求反演值**。
+论文把 OIB 的 `FBice` 当作雷达干舷代理；它是雪面干舷减雪深得到的量，并非独立 CryoSat-2 观测。`hi` 和 `hs` 用于验证。`main_inversion.m` 已逐条计算两条路线的反演值，并保留雪面干舷路线的第二支解。
 
 ## 坐标与配准顺序
 
@@ -33,12 +33,12 @@ flowchart LR
     E --> F[同日配对表<br/>TB、四均值、nOIB]
 ```
 
-1. `read_smos.m` 读取 ICDC SMOS L3B **逐日** NetCDF。原文件是 896×608 的北极极地立体网格，带逐像元经纬度；`read_oib.m` 读取 2012/2015 年 OIB 航次，并将数值缺测 `-99999` 转为 `NaN`。
+1. `read_smos.m` 读取 ICDC SMOS L3B **逐日** NetCDF。原文件是 896×608 的北极极地立体网格，带逐像元经纬度；`read_oib.m` 读取 2012–2015 年 OIB 航次，并将数值缺测 `-99999` 转为 `NaN`。2012/2013 使用正式 IDCSI4，2014/2015 使用 NSIDC-0708 Quick Look。
 2. `ease_grid.m` 定义完整北极原版 EASE 目标矩阵：1441×1441，步长 12,533.76 m，左上外边界 `(-9030574.08, 9030574.08)` m。像元中心为 `x(c)=xMin+(c-0.5)Δ`、`y(r)=yMax-(r-0.5)Δ`。
 3. `regrid_smos_to_ease.m` 从每个目标中心逆向寻找最近的原 SMOS 像元，复制其 TB；原像元无 TB 或 `nPair<=0` 时保留缺测。只对 TB 做一次网格转换，**不对九个 SMOS TB 求均值**。
 4. `PSP2EASE.m` 把每条 OIB 记录的经纬度投影到目标平面，按 `col=floor((x-xMin)/Δ)+1`、`row=floor((yMax-y)/Δ)+1` 定位行列；这是位置落格，不对 OIB 数值插值。
 5. `collocate_2017_day.m` 先保留四变量均有效、`pcnt_ow=pcnt_thin_ice=pcnt_grey_ice=0`、`my_ice_flag` 为 FYI/MYI 的记录；再以每个 SMOS 中心格的 3×3 窗口汇总四个原始点总和与共同样本数。九格内同时含 FYI 与 MYI 的中心格被排除。第 5.1 节未要求负 `FBice` 阈值，因此此处不另加阈值。
-6. `main.m` 顺序处理 2012 年 14 次与 2015 年 9 次 OIB 飞行，每次只取同日 SMOS。2012-03-28 有 7128 条 OIB 质量合格点，但对应九格区域内无有效 SMOS TB，因此该日无配对，详情看 `summary`。**不会**把 3–4 月亮温先求季节均值。
+6. `main.m` 按 `yearsToProcess` 处理对应年份，每次只取同日 SMOS。当前设置为 2012/2015：23 次飞行、6,542 条配对。四年扩展实验曾处理 48 次飞行，其中 46 日产生有效配对：2012/2013/2014/2015 年分别为 3,690/4,389/5,433/2,852 条。2012-03-28 对应九格区域内无有效 SMOS TB；2013-03-20 在当前质量和冰型筛选后没有有效 OIB 点。详情看 `summary`。**不会**把 3–4 月亮温先求季节均值。
 
 ### PSP 与 EASE 是否有旋转
 
@@ -46,9 +46,9 @@ flowchart LR
 
 ## 后续反演入口
 
-2012 年 14 次飞行中，13 天有有效配对，共 3690 条；2015 年 9 天有配对，共 2852 条。论文的后续反演单位是**每一条配对**：先分别用 (TB, FBice) 和 (TB, FBsnow) 两条路线求解，再汇总多天的结果；不能先把 13 天 TB 或 OIB 值合成一个均值。
+四年共有 16,364 条有效配对。论文的后续反演单位是**每一条配对**：先分别用 (TB, FBice) 和 (TB, FBsnow) 两条路线求解，再汇总多天的结果；不能先把多天 TB 或 OIB 值合成一个均值。
 
-`main_inversion.m` 默认选择 2012 年并准备 `inputs` 和 `model`，可运行以检查记录数。`model` 含论文第 2.1 节的冬季温度、海水温盐和密度常数。`invert_2017_pair.m` 已实现论文图 5/6 的两条求解路线：雷达干舷以 4 cm 步长找区间再二分，雪面干舷以 1 cm 步长扫描所有变号区间再二分，并保留双解。论文没有规定亮温残差阈值，代码暂用 0.01 K。雪面干舷双解在第 5.2 节验证中默认取雪深较小的一支。
+`main_inversion.m` 现只读取 2012/2015 年缓存，默认 `runSolver=false`，只加载 6,542 条输入；显式启用求解后，运行时约每 1% 输出日期、完成比例、耗时/预计剩余时间、有解数和双解数，新结果使用 `inversion_2012_2015_current_model` 前缀。`model` 含论文第 2.1 节的冬季温度、海水温盐和密度常数。`invert_2017_pair.m` 已实现论文图 5/6 的两条求解路线：雷达干舷以 4 cm 步长找区间再二分，雪面干舷以 1 cm 步长扫描所有变号区间再二分，并保留双解。论文没有规定亮温残差阈值，代码暂用 0.01 K。雪面干舷双解在第 5.2 节验证中默认取雪深较小的一支。
 
 `solution_space_2017.m` 按第 2.2 节扫描 0–10 m 冰厚、0–1 m 雪深，依据静力平衡计算两种干舷并排除负冰面干舷；默认扫描间隔为 5 cm / 1 cm，**这是代码设置而非论文指定数值**。`plot/plot_solution_space_2017.m` 可绘制对应图 3/4 的 TB—干舷解空间。`fit_retrieval_2017.m` 计算图 11/12 使用的自由斜率最小二乘拟合、固定斜率为 1 的偏差和 RMSE。启用求解后，主程序也会按论文用模拟 OIB TB 与 SMOS TB 相差不超过 1.5 K 的样本另算一组验证统计。
 
@@ -56,7 +56,11 @@ flowchart LR
 
 2017 联合反演论文正文只明确说采用改进的 `multi-layer formulation`，没有直接写“20 层”。同年文献 [32] 的层数敏感性试验写明使用 `N=20`；周璐博士论文进一步明确为 **海冰 20 层、雪 1 层**。因此，本项目把 20/1 作为目标复现配置，把 `model.nIceLayers=1` 仅作为单层敏感性基线，不能把单层结果当作 2017 联合反演的最终前向模型。
 
-`validate_tb_forward.m` 对照论文表 1 的 8 个理想场景，并比较 1/20/100 层。本实现的表 1 RMSE 为约 2.09 K、平均偏差为约 −1.81 K；5 m 厚冰场景的 20→100 层差异小于 0.1 K，但薄冰场景仍有更强层数敏感性。这个结果与论文报告的约 1.6–1.8 K 模拟偏差量级接近，但尚不是作者代码级完全闭合。因此 `main_inversion.m` 保持 `runSolver=false`，先保留前向验证结果，不输出未经确认的全量反演值。OIB 的 `hi` 和 `hs` 继续保留供验证。
+`validate_tb_forward.m` 对照论文表 1 的 8 个理想场景，并比较 1/20/100 层。本实现的表 1 RMSE 为约 2.09 K、平均偏差为约 −1.81 K；5 m 厚冰场景的 20→100 层差异小于 0.1 K，但薄冰场景仍有更强层数敏感性。这个结果与论文报告的约 1.6–1.8 K 模拟偏差量级接近，但尚不是作者代码级完全闭合。当前 `main_inversion.m` 默认不运行全量求解。实际四年结果及与论文的差异见 `RESULTS_2012_2015.md`。
+
+`validate_inversion_closure_2017.m` 独立执行 8 场景、两条路线的自闭环和论文表 1→表 2 闭环；可写出逐组摘要与逐支解 CSV。自闭环全部恢复真值，雪面自由板路线的 II、VI 各有两支解；论文输入下当前前向模型未复现表 2。具体数值、无解原因和运行命令见 `CLOSURE_2017.md`。该入口不触发全量反演或参数/层数敏感性分析。
+
+温盐及界面审查、两种界面 Fresnel 口径的八场景闭环结果与后续交接见 `analysis/温盐廓线与物理界面审查及后续交接.md`。默认前向模型仍使用层中点介电常数；`model.interfacePermittivityMode="boundary"` 可检查物理界面两侧介电常数方案。逐层源项仍由层中点温度计算。
 
 ### 亮温前向模型的文献链
 
@@ -82,25 +86,34 @@ flowchart LR
 
 ## 运行与输出
 
-仓库包含当前的 `pairs_2017_same_day_v2.mat` 缓存，所以克隆后可直接运行 `main` 查看配准结果，运行 `main_inversion` 检查反演输入。若要从原始观测重新计算，把 `main.m` 的 `useCache` 改为 `false`，并将原始文件放在仓库同级的 `data/OIB` 和 `data/smos` 目录；原始观测数据不随仓库提交。
+缓存名现在由年份列表逐项组成：`pairs_2012_2015_same_day.mat` 只含论文年份，`pairs_2012_2013_2014_2015_same_day.mat` 含四年扩展数据。`main` 发现同名缓存中的飞行年份与配置不符时会自动重建。2012/2015 缓存已从原始 OIB/SMOS 数据重建为 23 次飞行、6,542 条配对；原有四年缓存按准确年份重命名保留。原始观测数据不随仓库提交。
 
 ```matlab
 cd('D:\海冰厚度联合反演\retrieval_matlab_ver')
 main
 head(pairs)
 summary
-main_inversion  % 查看逐条反演输入，目前不求物理解
+main_inversion  % 当前只加载 2012/2015 两年输入，默认不运行求解器
 ```
 
-- `processed/pairs_2017_same_day_v2.csv`：每条记录一个 SMOS 中心格，包含 `day, flight, row, col, TB, FBsnow, hs, FBice, hi, nOIB, isMYI`。
-- `processed/pairs_2017_same_day_v2.mat`：同一配对表及各飞行日 `summary`；再次运行会直接读缓存。
+- `processed/pairs_2012_2015_same_day.csv/.mat`：仅 2012/2015 的 6,542 条配对。
+- `processed/pairs_2012_2013_2014_2015_same_day.csv/.mat`：四年扩展实验的 16,364 条配对。
+- `processed/inversion_2012_2015.csv/.mat`：历史四年逐配对反演值、双解、TB 模拟值、掩膜和理论解空间；文件名早于当前年份命名规范。
+- `processed/inversion_2012_2015_metrics.csv`：四年合并指标。
+- `processed/inversion_2012_2015_metrics_by_year.csv`：逐年指标。
+- `processed/inversion_2012_2015_paper_years_metrics.csv`：只含论文验证年份 2012/2015 的可比口径。
 - `processed/tb_forward_table1_validation.csv`：论文表 1 的 8 个场景、当前模拟 TB、差值和卤水适用范围诊断。
 - `processed/tb_forward_layer_sensitivity.csv`：FYI/MYI 代表场景下 1/20/100 层亮温对比。
-- `figures/pairs_2017_coverage.png`：唯一的配准质检图，显示配对位置及九格内 OIB 样本数。
+- `figures/pairs_2012_2015_coverage.png`：2012/2015 配准位置及九格内 OIB 样本数。
+- `figures/pairs_2012_2013_2014_2015_coverage.png`：四年扩展实验配准位置。
+- `analysis/tb_difference_vs_hi_hs_8_scenarios.png/.svg`：表 1 八场景的冰厚/雪深与 `TBmodel−TBpaper` 图，见 `analysis/README.md`。
+- `figures/retrieval_validation_all_revised.png`：全部有效解的论文图 11 风格验证图。
+- `figures/retrieval_validation_tb_within_1p5K_revised.png`：1.5 K 子集的论文图 12 风格验证图。
+- `figures/tb_model_vs_smos_revised.png`：观测与模拟亮温对比，纵轴为模型亮温。
 
-此前探索阶段生成的其他图片及缓存仍保留在 `figures/`、`processed/`，当前 `main` 不再使用。配准质检由 `plot/plot_2017_pairs.m` 绘制；待当前前向模型的剩余偏差被接受或进一步闭合后，可把 `main_inversion.m` 的 `runSolver` 改为 `true`，再输出雷达和激光两种理论解空间及逐条反演结果。
+配准质检由 `plot/plot_2017_pairs.m` 绘制；反演散点与亮温比较由 `plot/plot_retrieval_validation.m` 绘制。实际指标与复现边界见 `RESULTS_2012_2015.md`。
 
-需要重算时在 `main.m` 将 `useCache = false`，运行后可改回 `true`。图像只绘制数千个有效配对点，避免为全部原始航迹反复生成大图。
+需要重算所选年份时在 `main.m` 将 `useCache = false`，运行后可改回 `true`。若要重建四年扩展缓存，先把 `yearsToProcess` 设为 `2012:2015`；若要执行两年全量反演，须显式设 `runSolver=true` 后运行 `main_inversion`。本次审查没有运行全量反演。图像只绘制数千个有效配对点，避免为全部原始航迹反复生成大图。
 
 ## 复现边界
 

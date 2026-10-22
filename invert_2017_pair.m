@@ -41,7 +41,8 @@ function [solutions, info] = invert_2017_pair(tbObs, fbObs, branch, isMYI, model
 
     solutions = struct('hi', {}, 'hs', {}, 'tbSim', {}, 'tbResidual', {});
     info = struct('status', "no_root", 'scanCount', 0, ...
-        'rootCount', 0, 'unconvergedBrackets', 0);
+        'rootCount', 0, 'unconvergedBrackets', 0, ...
+        'scanTBMinK', NaN, 'scanTBMaxK', NaN);
     if fbObs < 0
         info.status = "negative_freeboard";
         return
@@ -64,6 +65,11 @@ function [solutions, info] = invert_2017_pair(tbObs, fbObs, branch, isMYI, model
         [~, ~, residual(j)] = evaluate(hsGrid(j));
     end
     info.scanCount = numel(hsGrid);
+    finiteResidual = residual(isfinite(residual));
+    if ~isempty(finiteResidual)
+        info.scanTBMinK = tbObs + min(finiteResidual);
+        info.scanTBMaxK = tbObs + max(finiteResidual);
+    end
 
     % 处理扫描点恰好命中阈值的情形；连续命中视为一个平坦区间。
     hit = isfinite(residual) & abs(residual) <= options.tbToleranceK;

@@ -12,7 +12,7 @@ function fit = fit_retrieval_2017(observed, retrieved)
     x = observed(valid);
     y = retrieved(valid);
     fit = struct('n', numel(x), 'slope', NaN, 'intercept', NaN, ...
-        'rSquared', NaN, 'bias', NaN, 'rmse', NaN);
+        'correlation', NaN, 'rSquared', NaN, 'bias', NaN, 'rmse', NaN);
     if numel(x) < 2, return; end
 
     fit.bias = mean(y - x);  % 固定斜率为 1 时的截距。
@@ -24,6 +24,7 @@ function fit = fit_retrieval_2017(observed, retrieved)
     end
     if std(x) > 0 && std(y) > 0
         c = corrcoef(x, y);
-        fit.rSquared = c(1,2)^2;
+        fit.correlation = c(1,2);
+        fit.rSquared = fit.correlation^2;
     end
 end

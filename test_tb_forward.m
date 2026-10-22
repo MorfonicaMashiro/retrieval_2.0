@@ -45,3 +45,61 @@ function testSnowWithoutIceRejected(testCase)
     verifyError(testCase, @() tb_forward(0, 0.1, false, model), ...
         'tb_forward:SnowWithoutIce');
 end
+
+function testColdBrineExtrapolationRequiresExplicitOptIn(testCase)
+    model = struct('surfaceTempC', -35, 'waterTempC', -1.8, ...
+        'waterSalinity', 33);
+    verifyError(testCase, @() tb_forward(2, 0.01, false, model), ...
+        'tb_forward:BrineTemperature');
+
+    model.allowColdBrineExtrapolation = true;
+    tb = tb_forward(2, 0.01, false, model);
+    verifyTrue(testCase, isfinite(tb));
+end
+
+function testPhysicalBoundaryAndLayerTemperaturesAreDistinct(testCase)
+    model = struct('surfaceTempC', -30, 'waterTempC', -1.8, ...
+        'waterSalinity', 33);
+    [tbMidpoint, detail] = tb_forward(2.5, 0.15, true, model);
+    interfaceC = detail.profile.interfaceTemperatureC;
+    verifyEqual(testCase, detail.profile.snowBottomTemperatureC, ...
+        interfaceC, 'AbsTol', 1e-10);
+    verifyGreaterThan(testCase, interfaceC, ...
+        detail.profile.snowLayerTemperatureC(end));
+    verifyGreaterThan(testCase, ...
+        detail.profile.iceLayerTemperatureC(1), interfaceC);
+    verifyNotEqual(testCase, detail.boundary.iceTop, ...
+        detail.profile.iceLayerPermittivity(1));
+
+    model.interfacePermittivityMode = "boundary";
+    tbBoundary = tb_forward(2.5, 0.15, true, model);
+    verifyGreaterThan(testCase, tbBoundary, tbMidpoint);
+end
+
+function testBrightnessOffsetAppliedOnce(testCase)
+    model = struct('surfaceTempC', -30, 'waterTempC', -1.8, ...
+        'waterSalinity', 33, 'includeCosmic', true);
+    tbBase = tb_forward(1, 0.1, false, model);
+    model.tbOffsetK = 1;
+    verifyEqual(testCase, tb_forward(1, 0.1, false, model) - tbBase, ...
+        1, 'AbsTol', 1e-10);
+end
+
+function testBrineVolumeUsesDirectF1Formula(testCase)
+    model = struct('surfaceTempC', -30, 'waterTempC', -1.8, ...
+        'waterSalinity', 33, 'nIceLayers', 20);
+    [~, detail] = tb_forward(0.5, 0.05, false, model);
+    temperatureC = detail.profile.iceLayerTemperatureC(end);
+    salinityPpt = detail.profile.iceLayerSalinityPpt(end);
+    f1 = polyval([-0.01074, -0.6397, -22.45, -4.732], temperatureC);
+    pureIceDensity = 0.917 - 1.403e-4 * temperatureC;
+    expectedPermille = 1000 * pureIceDensity * salinityPpt / f1;
+    actualPermille = detail.profile.iceLayerBrineRawPermille(end);
+    verifyEqual(testCase, actualPermille, expectedPermille, 'AbsTol', 1e-12);
+
+    % 含 F2 的旧式等价于额外采用 Va/V=0 的密度闭合，不应再成为默认值。
+    f2 = polyval([-8.801e-6, -5.330e-4, -0.01763, 0.08903], temperatureC);
+    legacyPermille = 1000 * pureIceDensity * salinityPpt / ...
+        (f1 - pureIceDensity * salinityPpt * f2);
+    verifyGreaterThan(testCase, abs(actualPermille - legacyPermille), 0.1);
+end
