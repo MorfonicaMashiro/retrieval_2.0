@@ -30,6 +30,8 @@ function [tb, diagnostics] = tb_forward(hi, hs, isMYI, model)
 %       Tsurf=-35 degC 场景时设为 true，允许F1冷段多项式外推至-35 degC
 %     interfacePermittivityMode 默认 "midpoint"（历史口径）；"boundary"
 %       在空气/雪、雪/冰、冰/水物理界面用界面两侧温盐求介电常数。
+%     radiativeTransferMode 默认 "burke"；"upperReflection" 传播上层
+%       下行源项，用于检查层数收敛性，不作为论文复现的默认口径。
 %
 %   [TB, DIAGNOSTICS] 还返回层温、盐度和卤水体积分数的摘要。实现没有把
 %   论文验证所得约 1.6--1.8 K 偏差硬编码为大气或经验校正项。
@@ -100,7 +102,8 @@ function [tb, diagnostics] = tb_forward(hi, hs, isMYI, model)
             'emissivityMean', NaN, ...
             'profile', struct(), ...
             'boundary', struct(), ...
-            'interfacePermittivityMode', "midpoint"), size(hi));
+            'interfacePermittivityMode', "midpoint", ...
+            'radiativeTransferMode', "burke"), size(hi));
     else
         diagnostics = struct([]);
     end
@@ -129,7 +132,8 @@ function model = apply_defaults(model)
         'fyiMinSalinityPpt', 1.5, ...
         'maxBrinePermille', 70, ...
         'allowColdBrineExtrapolation', false, ...
-        'interfacePermittivityMode', "midpoint");
+        'interfacePermittivityMode', "midpoint", ...
+        'radiativeTransferMode', "burke");
     % 参数来源：N_ice=20、N_snow=1 见 [ZR17] Sect. 3 与 [TH] Sect. 3.2.2；
     % f=1.4 GHz 见 [DS17] Sect. 2.1；0--40 deg 双极化平均见 [ZR17] Sect. 2
     % 和 [Z18] Sect. 2.3。1 deg 步长是本代码的数值离散，并非论文指定。
@@ -199,6 +203,12 @@ function validate_model(model)
             ["midpoint", "boundary"])
         error('tb_forward:Parameters', ...
             'interfacePermittivityMode 只能为 midpoint 或 boundary。');
+    end
+    if ~isscalar(string(model.radiativeTransferMode)) || ...
+            ~ismember(string(model.radiativeTransferMode), ...
+            ["burke", "upperReflection"])
+        error('tb_forward:Parameters', ...
+            'radiativeTransferMode 只能为 burke 或 upperReflection。');
     end
 end
 
@@ -287,11 +297,19 @@ function [tbMean, detail] = forward_scalar(hi, hs, isMYI, model)
     emissivity = nan(2, numel(angles));
     for polarization = 1:2
         for angleIndex = 1:numel(angles)
-            [surfaceTB, effectiveEmissivity] = burke_stack( ...
-                angles(angleIndex), polarization, model.frequencyHz, ...
-                layerThickness, layerTemperatureK, layerPermittivity, layerKind, ...
-                waterTempK, epsWater, boundary, ...
-                model.interfacePermittivityMode);
+            if string(model.radiativeTransferMode) == "upperReflection"
+                [surfaceTB, effectiveEmissivity] = ...
+                    radiative_stack(angles(angleIndex), polarization, ...
+                    model.frequencyHz, layerThickness, layerTemperatureK, ...
+                    layerPermittivity, layerKind, waterTempK, epsWater, ...
+                    boundary, model.interfacePermittivityMode);
+            else
+                [surfaceTB, effectiveEmissivity] = ...
+                    burke_stack(angles(angleIndex), polarization, ...
+                    model.frequencyHz, layerThickness, layerTemperatureK, ...
+                    layerPermittivity, layerKind, waterTempK, epsWater, ...
+                    boundary, model.interfacePermittivityMode);
+            end
             if model.includeCosmic
                 surfaceTB = surfaceTB + ...
                     (1 - effectiveEmissivity) * model.cosmicTBK;
@@ -334,7 +352,9 @@ function [tbMean, detail] = forward_scalar(hi, hs, isMYI, model)
         'profile', profile, ...
         'boundary', boundary, ...
         'interfacePermittivityMode', ...
-        string(model.interfacePermittivityMode));
+        string(model.interfacePermittivityMode), ...
+        'radiativeTransferMode', ...
+        string(model.radiativeTransferMode));
 end
 
 %盐度廓线和温度廓线的计算
@@ -535,84 +555,4 @@ function epsWater = seawater_permittivity(frequencyHz, temperatureC, salinityPpt
     % 单 Debye 海水模型：eps=eps_inf+(eps_s-eps_inf)/(1+i*omega*tau)
     % -i*sigma/(omega*eps0)，eps_inf=4.9；eps_s、tau、sigma 的温盐
     % 多项式均来自 [KS77]。采用该关系见 [M13] Sect. 2.1、[Z18] Appendix A3。
-end
-
-%海冰亮温计算
-function [tb, effectiveEmissivity] = burke_stack( ...
-        incidenceDeg, polarization, frequencyHz, layerThickness, ...
-        layerTemperatureK, layerPermittivity, layerKind, bottomTemperatureK, ...
-        bottomPermittivity, boundary, interfacePermittivityMode)
-    sinTheta0 = sind(incidenceDeg);
-    k0 = 2 * pi * frequencyHz / 299792458;
-    upward = bottomTemperatureK;
-    upwardUnit = 1;
-    lowerPermittivity = bottomPermittivity;
-    lowerKind = 3; % 海水
-
-    for layer = numel(layerThickness):-1:1
-        epsCurrent = layerPermittivity(layer);
-        % 冰内/雪内离散层只是连续温盐廓线的数值积分单元，不是物理界面。
-        % 若对这些小介电差逐层施加 Burke 一阶反射，误差会随层数累积，
-        % 无法复现 Zhou 等报告的 N=20 到 N=100 小于 0.1 K 的收敛性。
-        if layerKind(layer) == lowerKind
-            reflectionBottom = 0;
-        elseif string(interfacePermittivityMode) == "boundary" && ...
-                layerKind(layer) == 2 && lowerKind == 3
-            reflectionBottom = fresnel_power( ...
-                boundary.iceBottom, bottomPermittivity, ...
-                sinTheta0, polarization);
-        elseif string(interfacePermittivityMode) == "boundary" && ...
-                layerKind(layer) == 1 && lowerKind == 2
-            reflectionBottom = fresnel_power( ...
-                boundary.snowBottom, boundary.iceTop, ...
-                sinTheta0, polarization);
-        else
-            reflectionBottom = fresnel_power( ...
-                epsCurrent, lowerPermittivity, sinTheta0, polarization);
-        end
-        verticalIndex = sqrt(epsCurrent - sinTheta0^2);
-        oneWayPowerTransmission = exp( ...
-            -2 * k0 * abs(imag(verticalIndex)) * layerThickness(layer));%tau_j
-        sourceFactor = (1 - oneWayPowerTransmission) * ...
-            (1 + reflectionBottom * oneWayPowerTransmission);
-        upward = layerTemperatureK(layer) * sourceFactor + ...
-            (1 - reflectionBottom) * upward * oneWayPowerTransmission;
-        upwardUnit = sourceFactor + ...
-            (1 - reflectionBottom) * upwardUnit * oneWayPowerTransmission;
-        lowerPermittivity = epsCurrent;
-        lowerKind = layerKind(layer);
-    end
-    % tau_j=exp[-2*k0*|Im(sqrt(eps_j-sin^2(theta0)))|*d_j]；随后从海水
-    % 边界向上递推各层自发辐射、底界面反射和衰减。物理框架见 [B79]、
-    % [M13] Sect. 2.1 与 [Z18] Appendix A1/A3。这里的 sourceFactor 和
-    % upward 递推是本项目对 Burke 一阶非相干模型的可审计离散实现，
-    % 不是论文中逐式给出的作者源代码。
-
-    topPermittivity = lowerPermittivity;
-    if string(interfacePermittivityMode) == "boundary" && ...
-            ~isempty(layerThickness)
-        topPermittivity = boundary.top;
-    end
-    reflectionTop = fresnel_power(1, topPermittivity, ...
-        sinTheta0, polarization);
-    tb = (1 - reflectionTop) * upward;
-    effectiveEmissivity = (1 - reflectionTop) * upwardUnit;
-    effectiveEmissivity = min(max(real(effectiveEmissivity), 0), 1);
-    % 顶界面透射后 TB=(1-R_top)U，e_eff=(1-R_top)E；空气 eps=1。
-    % 分层介质、平滑界面与非相干假设见 [M13] Sect. 2.1、[B79]。
-end
-
-function reflectivity = fresnel_power(epsUpper, epsLower, sinTheta0, polarization)
-    qUpper = sqrt(epsUpper - sinTheta0^2);
-    qLower = sqrt(epsLower - sinTheta0^2);
-    if polarization == 1
-        coefficient = (qUpper - qLower) / (qUpper + qLower);
-    else
-        coefficient = (epsLower * qUpper - epsUpper * qLower) / ...
-            (epsLower * qUpper + epsUpper * qLower);
-    end
-    reflectivity = min(max(abs(coefficient)^2, 0), 1);
-    % q_j=sqrt(eps_j-sin^2(theta0))；上式分别为 H/TE 与 V/TM Fresnel
-    % 振幅反射系数，功率反射率 R=|r|^2。见 [K10] Sects. 2.1--2.2、
-    % [M13] Sect. 2.1；标准推导出处由 [TH] Sect. 3.2.2 引用 Ulaby 等。
 end

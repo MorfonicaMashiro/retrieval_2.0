@@ -103,3 +103,88 @@ function testBrineVolumeUsesDirectF1Formula(testCase)
         (f1 - pureIceDensity * salinityPpt * f2);
     verifyGreaterThan(testCase, abs(actualPermille - legacyPermille), 0.1);
 end
+
+function testUniformSlabSubdivisionIsInvariant(testCase)
+    frequencyHz = 1.4e9;
+    thickness = 0.75;
+    iceTemperatureK = 258;
+    icePermittivity = 3.25 + 0.18i;
+    waterTemperatureK = 271.35;
+    waterPermittivity = 72 + 55i;
+    boundary = struct();
+
+    tb1 = radiative_stack(40, 1, frequencyHz, thickness, ...
+        iceTemperatureK, icePermittivity, 2, ...
+        waterTemperatureK, waterPermittivity, boundary, "midpoint");
+    layerCount = 100;
+    tb100 = radiative_stack(40, 1, frequencyHz, ...
+        repmat(thickness / layerCount, 1, layerCount), ...
+        repmat(iceTemperatureK, 1, layerCount), ...
+        repmat(icePermittivity, 1, layerCount), ...
+        2 * ones(1, layerCount), waterTemperatureK, ...
+        waterPermittivity, boundary, "midpoint");
+    verifyEqual(testCase, tb100, tb1, 'AbsTol', 1e-10);
+end
+
+function testUniformSlabMatchesAnalyticSolution(testCase)
+    incidenceDeg = 35;
+    frequencyHz = 1.4e9;
+    thickness = 0.5;
+    iceTemperatureK = 260;
+    icePermittivity = 3.3 + 0.12i;
+    waterTemperatureK = 271;
+    waterPermittivity = 70 + 50i;
+    boundary = struct();
+
+    actual = radiative_stack(incidenceDeg, 1, frequencyHz, thickness, ...
+        iceTemperatureK, icePermittivity, 2, ...
+        waterTemperatureK, waterPermittivity, boundary, "midpoint");
+
+    sinTheta0 = sind(incidenceDeg);
+    k0 = 2 * pi * frequencyHz / 299792458;
+    transmission = exp(-2 * k0 * ...
+        abs(imag(sqrt(icePermittivity - sinTheta0^2))) * thickness);
+    topReflection = local_fresnel_power( ...
+        1, icePermittivity, sinTheta0, 1);
+    bottomReflection = local_fresnel_power( ...
+        icePermittivity, waterPermittivity, sinTheta0, 1);
+    expected = (1 - topReflection) * ( ...
+        (1 - bottomReflection) * transmission * waterTemperatureK + ...
+        (1 - bottomReflection * transmission^2 - ...
+        (1 - bottomReflection) * transmission) * iceTemperatureK);
+    verifyEqual(testCase, actual, expected, 'AbsTol', 1e-10);
+end
+
+function testUpperReflectionModeConvergesForThinIce(testCase)
+    baseModel = struct('surfaceTempC', -30, 'waterTempC', -1.8, ...
+        'waterSalinity', 33, 'nIceLayers', 20);
+    base20 = tb_forward(0.5, 0.05, true, baseModel);
+    baseModel.nIceLayers = 100;
+    base100 = tb_forward(0.5, 0.05, true, baseModel);
+
+    model = struct('surfaceTempC', -30, 'waterTempC', -1.8, ...
+        'waterSalinity', 33, 'radiativeTransferMode', "upperReflection", ...
+        'nIceLayers', 20);
+    tb20 = tb_forward(0.5, 0.05, true, model);
+    model.nIceLayers = 100;
+    [tb100, detail] = tb_forward(0.5, 0.05, true, model);
+    improvedDifference = abs(tb100 - tb20);
+    verifyLessThan(testCase, improvedDifference, 0.2);
+    verifyLessThan(testCase, improvedDifference, ...
+        abs(base100 - base20) / 20);
+    verifyEqual(testCase, detail.radiativeTransferMode, "upperReflection");
+end
+
+function reflectivity = local_fresnel_power( ...
+        upperPermittivity, lowerPermittivity, sinTheta0, polarization)
+    qUpper = sqrt(upperPermittivity - sinTheta0^2);
+    qLower = sqrt(lowerPermittivity - sinTheta0^2);
+    if polarization == 1
+        coefficient = (qUpper - qLower) / (qUpper + qLower);
+    else
+        coefficient = (lowerPermittivity * qUpper - ...
+            upperPermittivity * qLower) / ...
+            (lowerPermittivity * qUpper + upperPermittivity * qLower);
+    end
+    reflectivity = abs(coefficient)^2;
+end
