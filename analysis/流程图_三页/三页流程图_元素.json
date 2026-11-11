@@ -1,0 +1,578 @@
+[
+  {
+    "stem": "01_数据获取与配准",
+    "boxes": [
+      {
+        "name": "smos",
+        "x": 30,
+        "y": 20,
+        "w": 530,
+        "h": 95,
+        "title": "SMOS 逐日亮温",
+        "lines": [
+          "ICDC L3B v3，源网格 896×608，EPSG:3413",
+          "读取同日 TB、nPair；−999 → NaN"
+        ],
+        "fill": "#EDF5FA",
+        "line": "#5286A3",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "oib",
+        "x": 640,
+        "y": 20,
+        "w": 530,
+        "h": 95,
+        "title": "OIB 逐航次数据",
+        "lines": [
+          "2012/13 IDCSI4；2014/15 Quick Look",
+          "−99999 → NaN；FBice = FBsnow − hs"
+        ],
+        "fill": "#EDF5FA",
+        "line": "#5286A3",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "smos_ease",
+        "x": 30,
+        "y": 150,
+        "w": 530,
+        "h": 95,
+        "title": "SMOS 最近邻重采样到原版 EASE",
+        "lines": [
+          "目标 1441×1441，格距 12,533.76 m",
+          "目标中心逆映射至源像元；nPair≤0 保留缺测"
+        ],
+        "fill": "#EAF5E9",
+        "line": "#236431",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "oib_ease",
+        "x": 640,
+        "y": 150,
+        "w": 530,
+        "h": 95,
+        "title": "OIB 航迹点投影与落格",
+        "lines": [
+          "经纬度 → EASE (x,y)，只变位置、不插值",
+          "col=floor((x−xMin)/Δ)+1；row=floor((yMax−y)/Δ)+1"
+        ],
+        "fill": "#EAF5E9",
+        "line": "#236431",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "match",
+        "x": 135,
+        "y": 280,
+        "w": 930,
+        "h": 105,
+        "title": "同日 3×3 窗口配准，得到一条中心格输入",
+        "lines": [
+          "以有效 TB 中心格汇集本格及周围 8 格 OIB 原始点；只保留单一 FYI/MYI、无开水/薄冰/灰冰的样本",
+          "同一批 M 点分别取均值：FBsnow、hs、FBice、hi；输入 TBobs、冰型、两种干舷；hi/hs 留作验证"
+        ],
+        "fill": "#FFF3E5",
+        "line": "#C78948",
+        "fs": 17,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "counts",
+        "x": 30,
+        "y": 410,
+        "w": 1140,
+        "h": 95,
+        "title": "2012—2015 配对轨迹与网格数",
+        "lines": [
+          "2012：14 航次 / 13 有效 / 3,690 格     2013：10 / 9 / 4,389 格     2014：15 / 15 / 5,433 格     2015：9 / 9 / 2,852 格",
+          "合计 48 航次、46 条有有效配对、16,364 格；论文年份 2012+2015：23 航次、22 条有效、6,542 格"
+        ],
+        "fill": "#F3EFFA",
+        "line": "#8C75AB",
+        "fs": 17,
+        "hfs": 20,
+        "left": true
+      }
+    ],
+    "edges": [
+      {
+        "name": "s1",
+        "points": [
+          [
+            295,
+            116
+          ],
+          [
+            295,
+            149
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "o1",
+        "points": [
+          [
+            905,
+            116
+          ],
+          [
+            905,
+            149
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "s2",
+        "points": [
+          [
+            295,
+            246
+          ],
+          [
+            295,
+            262
+          ],
+          [
+            600,
+            262
+          ],
+          [
+            600,
+            279
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "o2",
+        "points": [
+          [
+            905,
+            246
+          ],
+          [
+            905,
+            262
+          ],
+          [
+            600,
+            262
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": false
+      },
+      {
+        "name": "match_count",
+        "points": [
+          [
+            600,
+            386
+          ],
+          [
+            600,
+            409
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      }
+    ]
+  },
+  {
+    "stem": "02_多层前向亮温",
+    "boxes": [
+      {
+        "name": "profile",
+        "x": 30,
+        "y": 20,
+        "w": 545,
+        "h": 184,
+        "title": "① 温度与盐度廓线",
+        "lines": [
+          "20 冰层 + 1 雪层；各层取中点温度",
+          "Rth=hs/ks+hi/ki；q=(Tw−Ts)/Rth",
+          "FYI：S=max[1.5,6.08e^(−5.81hi)+7.409e^(−0.5228hi)]",
+          "MYI：S(z)=1.6[1−cos(π z^(0.407/(z+0.573)))]"
+        ],
+        "fill": "#EAF5E9",
+        "line": "#236431",
+        "fs": 17,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "dielectric",
+        "x": 625,
+        "y": 20,
+        "w": 545,
+        "h": 184,
+        "title": "② 卤水体积与复介电常数",
+        "lines": [
+          "Vb=1000·ρpure(T)·S/F1(T)（‰）；基线不截断",
+          "Vant FYI：εice=3.10+0.0084Vb+i(0.037+0.00445Vb)",
+          "Vant MYI：εice=3.10+0.0084Vb+i(0.003+0.00435Vb)",
+          "干雪 Tiuri；海水 Klein–Swift Debye"
+        ],
+        "fill": "#EAF5E9",
+        "line": "#236431",
+        "fs": 17,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "optics",
+        "x": 30,
+        "y": 239,
+        "w": 545,
+        "h": 174,
+        "title": "③ 层界面与光学衰减",
+        "lines": [
+          "qj=√(εj−sin²θ)；Fresnel 反射 Rj=|rH/V|²",
+          "τj=exp[−2k0|Im(qj)|dj]，k0=2πf/c",
+          "同材数值层界面 R=0；物理界面用中点 ε",
+          "单位温度源重复递推，得到有效发射率 e_eff"
+        ],
+        "fill": "#EDF5FA",
+        "line": "#5286A3",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "rt",
+        "x": 625,
+        "y": 239,
+        "w": 545,
+        "h": 174,
+        "title": "④ Burke 自下而上亮温递推",
+        "lines": [
+          "海水边界 Ubottom=Tw(K)，向上穿过冰和雪",
+          "Aj=(1−τj)(1+Rjτj)",
+          "Uj=Tj(K)Aj+(1−Rj)τjU(j+1)",
+          "TBθ,p=(1−Rtop)Utop+(1−e_eff)×2.7 K"
+        ],
+        "fill": "#EDF5FA",
+        "line": "#5286A3",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "mean",
+        "x": 30,
+        "y": 445,
+        "w": 1140,
+        "h": 65,
+        "title": "输出及物理敏感性分支",
+        "lines": [
+          "0–40°、H/V 算术平均；实验：Vb 70‰ 截断、冰层 1/20/100、界面中点/边界、Burke/上层反射、雪分层"
+        ],
+        "fill": "#F3EFFA",
+        "line": "#8C75AB",
+        "fs": 17,
+        "hfs": 19,
+        "left": true
+      }
+    ],
+    "edges": [
+      {
+        "name": "p_d",
+        "points": [
+          [
+            576,
+            112
+          ],
+          [
+            624,
+            112
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "p_o",
+        "points": [
+          [
+            300,
+            205
+          ],
+          [
+            300,
+            238
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "d_r",
+        "points": [
+          [
+            898,
+            205
+          ],
+          [
+            898,
+            238
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "o_r",
+        "points": [
+          [
+            576,
+            326
+          ],
+          [
+            624,
+            326
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "r_mean",
+        "points": [
+          [
+            898,
+            414
+          ],
+          [
+            898,
+            430
+          ],
+          [
+            600,
+            430
+          ],
+          [
+            600,
+            444
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      }
+    ]
+  },
+  {
+    "stem": "03_反演评定与实验分支",
+    "boxes": [
+      {
+        "name": "ice",
+        "x": 30,
+        "y": 20,
+        "w": 545,
+        "h": 152,
+        "title": "路线 A：TB + 冰面干舷 FBice",
+        "lines": [
+          "候选 hs：0–1 m，每 4 cm 扫描",
+          "hi=(ρw·FBice+ρs·hs)/(ρw−ρi)",
+          "g(hs)=F(hi,hs,type)−TBobs；保留物理解",
+          "扫描命中或变号区间进入二分"
+        ],
+        "fill": "#FFF3E5",
+        "line": "#C78948",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "snow",
+        "x": 625,
+        "y": 20,
+        "w": 545,
+        "h": 152,
+        "title": "路线 B：TB + 雪面干舷 FBsnow",
+        "lines": [
+          "候选 hs：0–min(1 m,FBsnow)，每 1 cm 全扫",
+          "hi=[ρw·FBsnow−(ρw−ρs)hs]/(ρw−ρi)",
+          "FBice=FBsnow−hs≥0；每个变号区间二分",
+          "保留全部根，验证默认取较小 hs 根"
+        ],
+        "fill": "#FFF3E5",
+        "line": "#C78948",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "bisect",
+        "x": 130,
+        "y": 205,
+        "w": 940,
+        "h": 101,
+        "title": "共同求根与精度控制",
+        "lines": [
+          "|g|≤0.01 K 或雪深区间≤1e−5 m，最多 60 次；入表前再次校验 TB 残差",
+          "保存无根/双根、hi、hs、TBsim；不提前舍入；每条同日配对独立求解"
+        ],
+        "fill": "#EDF5FA",
+        "line": "#5286A3",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "metrics",
+        "x": 30,
+        "y": 340,
+        "w": 545,
+        "h": 135,
+        "title": "误差评定",
+        "lines": [
+          "OIB 平均 hi/hs 作参照；TBOIB=F(hiOIB,hsOIB)",
+          "报告 n、bias、RMSE、r、R²、无根率/双根率",
+          "全部、逐年、nOIB 前 5%、1.5 K 诊断子集",
+          "1.5 K 子集不用于实际反演前筛选"
+        ],
+        "fill": "#EAF5E9",
+        "line": "#236431",
+        "fs": 18,
+        "hfs": 20,
+        "left": true
+      },
+      {
+        "name": "branches",
+        "x": 625,
+        "y": 340,
+        "w": 545,
+        "h": 129,
+        "title": "空间算子与后续测试分支",
+        "lines": [
+          "stride=1 重叠；stride=3 不重叠",
+          "A: F(mean hi,mean hs)；B: mean F(逐点 hi,hs)",
+          "Aw: 加权参数；Bw: 加权逐点 TB 后反演",
+          "权重：等面积子网格或中心反距离 w=d^(−p)"
+        ],
+        "fill": "#F3EFFA",
+        "line": "#8C75AB",
+        "fs": 17,
+        "hfs": 20,
+        "left": true
+      }
+    ],
+    "edges": [
+      {
+        "name": "ice_b",
+        "points": [
+          [
+            300,
+            173
+          ],
+          [
+            300,
+            188
+          ],
+          [
+            600,
+            188
+          ],
+          [
+            600,
+            204
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "snow_b",
+        "points": [
+          [
+            898,
+            173
+          ],
+          [
+            898,
+            188
+          ],
+          [
+            600,
+            188
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": false
+      },
+      {
+        "name": "b_m",
+        "points": [
+          [
+            600,
+            307
+          ],
+          [
+            600,
+            322
+          ],
+          [
+            302,
+            322
+          ],
+          [
+            302,
+            339
+          ]
+        ],
+        "color": "#236431",
+        "dashed": false,
+        "arrow": true
+      },
+      {
+        "name": "b_exp",
+        "points": [
+          [
+            600,
+            322
+          ],
+          [
+            898,
+            322
+          ],
+          [
+            898,
+            339
+          ]
+        ],
+        "color": "#8C75AB",
+        "dashed": true,
+        "arrow": true
+      }
+    ]
+  }
+]

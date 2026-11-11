@@ -1,15 +1,29 @@
 *.asv
 
-# 仅保留当前论文配准结果和质检图；其他文件可由脚本重新生成。
-processed/*
-!processed/pairs_2017_same_day_v2.csv
-!processed/pairs_2017_same_day_v2.mat
-!processed/tb_forward_table1_validation.csv
-!processed/tb_forward_layer_sensitivity.csv
-figures/*
-!figures/pairs_2017_coverage.png
+# 计算结果与图件均由脚本重建，不进入源码主线。
+processed/
+figures/
 
 # 文档生成过程的渲染缓存和 Word 临时锁文件不入库。
 docs/_render*/
 docs/_forward_model_equations/
 docs/~$*.docx
+
+# 实验输出由脚本重建；主线只保存源码、配置、测试和说明文档。
+analysis/**/results/
+analysis/**/figures/
+analysis/**/closure/
+analysis/**/boundary_closure/
+analysis/**/midpoint_closure/
+analysis/**/*.mat
+analysis/**/*.csv
+analysis/**/*.fig
+analysis/**/*.png
+analysis/**/*.pdf
+analysis/**/*.svg
+analysis/**/RESULTS*.md
+analysis/**/COMPARISON.md
+analysis/**/AREA_OVERLAP.md
+tests/processed/
+docs/*.docx
+过去的markdown/

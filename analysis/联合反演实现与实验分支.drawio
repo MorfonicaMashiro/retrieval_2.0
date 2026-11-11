@@ -1,0 +1,258 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Codex" version="24.7.17" pages="1">
+  <diagram id="seaice-flow" name="联合反演总流程与实验分支">
+    <mxGraphModel dx="2460" dy="3670" grid="0" guides="1" page="1" pageScale="1" pageWidth="2460" pageHeight="3670" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="海冰厚度—雪深联合反演：已实现流程与实验分支" style="text;html=1;strokeColor=none;fillColor=none;fontSize=38;fontStyle=1;fontColor=#173B63;fontFamily=Microsoft YaHei;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="35" width="2300" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="section_① 同日数据获取与 EASE 配准" value="① 同日数据获取与 EASE 配准" style="rounded=0;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173B63;strokeColor=#173B63;strokeWidth=1;fontSize=23;fontColor=#FFFFFF;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="145" width="1400" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="smos_raw" value="&lt;b&gt;SMOS 逐日亮温&lt;/b&gt;&lt;br&gt;ICDC L3B v3，2012/2015 OIB 飞行同日&lt;br&gt;原生 PSP/EPSG:3413，896×608；TB、nPair&lt;br&gt;读取 NetCDF；−999 → NaN；不做季节平均" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF3FC;strokeColor=#5B8DB8;strokeWidth=2;fontSize=23;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="232" width="680" height="216" as="geometry" />
+        </mxCell>
+        <mxCell id="oib_raw" value="&lt;b&gt;OIB 逐航次观测&lt;/b&gt;&lt;br&gt;2012 IDCSI4 L4；2015 NSIDC-0708 Quick Look&lt;br&gt;lat/lon、mean_fb、snow_depth、thickness、冰型&lt;br&gt;−99999 → NaN；同日文件配对" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF3FC;strokeColor=#5B8DB8;strokeWidth=2;fontSize=23;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="232" width="680" height="216" as="geometry" />
+        </mxCell>
+        <mxCell id="smos_ease" value="&lt;b&gt;SMOS → 原版北极 EASE&lt;/b&gt;&lt;br&gt;目标 1441×1441；Δ=12 533.76 m&lt;br&gt;目标中心 (x,y) → 经纬度 → 源 PSP&lt;br&gt;最近源像元复制 TB；nPair≤0 保持缺测&lt;br&gt;逐中心变换，不能仅把整图旋转 45°" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7F5F1;strokeColor=#469587;strokeWidth=2;fontSize=23;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="495" width="680" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="oib_ease" value="&lt;b&gt;OIB 点 → EASE 行列&lt;/b&gt;&lt;br&gt;经纬度直接投影；数值不插值&lt;br&gt;col=floor((x−xMin)/Δ)+1&lt;br&gt;row=floor((yMax−y)/Δ)+1&lt;br&gt;FBice,p=mean_fb,p−snow_depth,p" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7F5F1;strokeColor=#469587;strokeWidth=2;fontSize=23;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="495" width="680" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="collocate" value="&lt;b&gt;同日 3×3 配准与共同样本集合&lt;/b&gt;&lt;br&gt;每个有效 SMOS 中心格取本格及周围 8 个 EASE 格内的 OIB 原始点（约 37.5×37.5 km）&lt;br&gt;四量有限；开水/薄冰/灰冰比例均为 0；FYI/MYI 单一冰型；nOIB&gt;0；TB 有效&lt;br&gt;对同一批 M 个点：q_mean=(1/M)Σq_p，q∈{FBsnow, hs, FBice, hi}；不先求九格均值&lt;br&gt;中心格 stride=1，可重叠；不额外排除负 FBice（求解器再检查）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF3FC;strokeColor=#5B8DB8;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="775" width="1400" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="input" value="&lt;b&gt;一条配对的反演输入与验证参照&lt;/b&gt;&lt;br&gt;输入：TBobs、冰型、FBice 或 FBsnow；固定 ρw/ρi/ρs=1024/915/320 kg/m^3&lt;br&gt;OIB 平均 hi、hs 只作验证；FBice 是雪面干舷减雪深的代理，并非独立雷达观测&lt;br&gt;同一配对独立求解；记录 day/row/col/nOIB、无根与双根状态" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFF1E1;strokeColor=#C58A48;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1082" width="1400" height="165" as="geometry" />
+        </mxCell>
+        <mxCell id="section_② F(hi, hs, 冰型)：1.4 GHz 多层前向亮温" value="② F(hi, hs, 冰型)：1.4 GHz 多层前向亮温" style="rounded=0;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173B63;strokeColor=#173B63;strokeWidth=1;fontSize=23;fontColor=#FFFFFF;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1285" width="1400" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="profile" value="&lt;b&gt;温度和盐度廓线（20 冰层 + 1 雪层）&lt;/b&gt;&lt;br&gt;稳态热阻 R=hs/ks+hi/ki；q=(Tw−Tsurf)/R；T界=Tsurf+q·hs/ks&lt;br&gt;雪/冰各层取中点 T；Tsurf=−30 °C，Tw=−1.8 °C，ks=0.31 W/(m·K)&lt;br&gt;ki=2.034+0.13·mean(S)/Tbulk,C；Tbulk,C≈(Tsurf+Tw)/2&lt;br&gt;FYI: S=max[1.5, 6.08e^(−5.81hi)+7.409e^(−0.5228hi)] ppt，各层相同&lt;br&gt;MYI: z_k=(k−½)/N；S_k=1.6[1−cos(πz_k^(0.407/(z_k+0.573)))] ppt" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7F5F1;strokeColor=#469587;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1372" width="1400" height="245" as="geometry" />
+        </mxCell>
+        <mxCell id="dielectric" value="&lt;b&gt;卤水体积与雪—冰—海水复介电常数&lt;/b&gt;&lt;br&gt;Cox–Weeks: Vb=1000·ρ纯冰(T)·S/F_1(T) (‰)；F_1 随温度分段；&gt;70‰ 诊断标记&lt;br&gt;Vant: εice=a_1+a_2Vb+i(a_3+a₄Vb)；FYI/MYI 使用各自 1.4 GHz 系数&lt;br&gt;Tiuri 干雪: ε′=1+0.7ρr+0.7ρr^2；ε″=C(f,ρr)·exp(0.036T)&lt;br&gt;Klein–Swift 海水: 先算 Debye εraw，再取 Re(εraw)+i|Im(εraw)|；Sw=33 ppt&lt;br&gt;默认 Vb 不截断、界面用相邻层中点 ε；层源项始终取层中点 T" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7F5F1;strokeColor=#469587;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1638" width="1400" height="252" as="geometry" />
+        </mxCell>
+        <mxCell id="optics" value="&lt;b&gt;Fresnel 反射、层透射与有效发射率&lt;/b&gt;&lt;br&gt;q_j=√(ε_j−sin^2θ_0)；rH=(q_1−q_2)/(q_1+q_2)；rV=(ε_2q_1−ε_1q_2)/(ε_2q_1+ε_1q_2)&lt;br&gt;R=|r|^2；τ_j=exp[−2k_0|Im(q_j)|d_j]，k_0=2πf/c；同材数值层界面 R=0&lt;br&gt;以单位温度源重复同一递推得 e_eff；背景反射项为 (1−e_eff)×2.7 K" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7F5F1;strokeColor=#469587;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1928" width="1400" height="197" as="geometry" />
+        </mxCell>
+        <mxCell id="rt" value="&lt;b&gt;Burke 一阶非相干亮温递推：海水 → 冰 → 雪 → 空气&lt;/b&gt;&lt;br&gt;底边界 U_(n+1)=Tw(K)；自下而上对层 j：&lt;br&gt;A_j=(1−τ_j)(1+R_jτ_j)&lt;br&gt;U_j=T_j(K)A_j+(1−R_j)τ_jU_(j+1)&lt;br&gt;顶层：TBθ,p=(1−Rtop)U_1+(1−e_eff)·2.7 K；默认大气项/经验偏移均为 0" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E7F5F1;strokeColor=#469587;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2163" width="1400" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="average" value="&lt;b&gt;模拟亮温的观测口径&lt;/b&gt;&lt;br&gt;F(hi,hs,type)=mean_{θ=0:1:40°, p∈{H,V}} TBθ,p；先各角度/极化计算再算术平均&lt;br&gt;纯冰覆盖样本：不加开阔水/水道面积混合；SMOS TB 与 F 在配对尺度比较" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFF1E1;strokeColor=#C58A48;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2439" width="1400" height="137" as="geometry" />
+        </mxCell>
+        <mxCell id="section_③ 两种干舷路线：扫描 + 二分求根" value="③ 两种干舷路线：扫描 + 二分求根" style="rounded=0;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173B63;strokeColor=#173B63;strokeWidth=1;fontSize=23;fontColor=#FFFFFF;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2612" width="1400" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="ice_route" value="&lt;b&gt;路线 A｜TB + 冰面干舷 FBice&lt;/b&gt;&lt;br&gt;候选 hs∈[0,1 m]；4 cm 初扫&lt;br&gt;hi=(ρw·FBice+ρs·hs)/(ρw−ρi)&lt;br&gt;计算 g(hs)=F(hi,hs,type)−TBobs&lt;br&gt;保留满足 0≤hi≤10 m、FBice≥0 的点&lt;br&gt;扫描命中或变号区间交给二分" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFF1E1;strokeColor=#C58A48;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="2699" width="680" height="279" as="geometry" />
+        </mxCell>
+        <mxCell id="snow_route" value="&lt;b&gt;路线 B｜TB + 雪面干舷 FBsnow&lt;/b&gt;&lt;br&gt;候选 hs∈[0,min(1 m, FBsnow)]；1 cm 全扫&lt;br&gt;hi=[ρw·FBsnow−(ρw−ρs)hs]/(ρw−ρi)&lt;br&gt;FBice=FBsnow−hs≥0；0≤hi≤10 m&lt;br&gt;每个变号区间都二分；保留全部根&lt;br&gt;验证默认取较小 hs 根，第二支另存" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFF1E1;strokeColor=#C58A48;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="2699" width="680" height="279" as="geometry" />
+        </mxCell>
+        <mxCell id="solver" value="&lt;b&gt;数值终止与解记录&lt;/b&gt;&lt;br&gt;对 g(hs) 异号区间取中点并更新边界；扫描点 |g|≤0.01 K 也可直接命中&lt;br&gt;停止条件：|g|≤0.01 K 或 hs 区间宽≤1e-5 m；最多 60 次；最终再次校验 TB 残差&lt;br&gt;存 hi、hs、TBsim、残差、根数/无根状态；多根不强行合并为单解" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF3FC;strokeColor=#5B8DB8;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="3020" width="1400" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="metrics" value="&lt;b&gt;④ 误差评定与精度保留&lt;/b&gt;&lt;br&gt;与同一配对 OIB 平均 hi/hs 比较；TB 验证值另算 F(hiOIB,hsOIB,type)&lt;br&gt;有效成对样本上：bias=mean(反演−参照)，RMSE=√mean[(反演−参照)^2]&lt;br&gt;自由斜率最小二乘 y=ax+b、相关系数 r 与 R^2=r^2；保留 n、无解率、双解率&lt;br&gt;同时报告全部/逐年/前 5% nOIB/|TBOIB−TBobs|≤1.5 K 诊断子集&lt;br&gt;用原始双精度与具名缓存；不按打印位数提前舍入；1.5 K 子集不能作真实反演筛选器" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF3FC;strokeColor=#5B8DB8;strokeWidth=2;fontSize=22;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="3238" width="1400" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="section_实验分支与接入位置" value="实验分支与接入位置" style="rounded=0;arcSize=10;whiteSpace=wrap;html=1;fillColor=#173B63;strokeColor=#173B63;strokeWidth=1;fontSize=23;fontColor=#FFFFFF;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="145" width="820" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="tests_data" value="&lt;b&gt;A 数据与空间算子｜已执行/已实现&lt;/b&gt;&lt;br&gt;基线：2012/2015，stride=1，3×3 重叠；6,542 配对&lt;br&gt;扩展：2013/2014 同日配准；四年共 16,364 配对&lt;br&gt;stride=3、phase=[2,2]：3×3 不重叠，733 配对&lt;br&gt;参数先均值 A：F(mean hi, mean hs)&lt;br&gt;逐点 TB 均值 B：mean F(hi_m,hs_m)&lt;br&gt;加权参数 Aw：F(Σw hi/Σw,Σw hs/Σw)&lt;br&gt;加权逐点 Bw：Σw F(hi_m,hs_m)/Σw&lt;br&gt;权重：中心反距离 w=d^(-p)（正式 p=1）；&lt;br&gt;或 2.5 km 等面积子网格；逐点反演已实现" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2EDFA;strokeColor=#8D75AD;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="232" width="820" height="435" as="geometry" />
+        </mxCell>
+        <mxCell id="tests_physics" value="&lt;b&gt;B 前向物理与离散｜已执行/可配置&lt;/b&gt;&lt;br&gt;表 1 八场景 TB 对照；FYI/MYI、温盐/界面审查&lt;br&gt;Cox–Weeks F_1-only 与旧 F_2 闭合口径审计&lt;br&gt;Vb&gt;70‰：不截断基线 vs 70‰ 截断敏感性&lt;br&gt;冰层 N=1/20/100；20→100 层差单列报告&lt;br&gt;物理界面 ε：midpoint vs boundary&lt;br&gt;辐射递推：Burke vs upperReflection&lt;br&gt;宇宙背景/大气/偏移开关仅作具名敏感性&lt;br&gt;雪层数可配置；目标固定层厚度试验尚未实现&lt;br&gt;不同物理口径需独立 variantTag 与结果文件" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2EDFA;strokeColor=#8D75AD;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="708" width="820" height="455" as="geometry" />
+        </mxCell>
+        <mxCell id="tests_solver" value="&lt;b&gt;C 反演与闭环｜已执行/已实现&lt;/b&gt;&lt;br&gt;八理想场景 × 两条路线：模型自闭环&lt;br&gt;论文表 1 → 表 2：独立检验可解性/双解&lt;br&gt;扫描步长 4 cm / 1 cm、容差、无根状态&lt;br&gt;逐点干舷求根：每个候选 hs 对所有点重算 TB&lt;br&gt;雪面逐点路线：局部 hs=min(候选,FBsnow_m)&lt;br&gt;淹没权重占比&gt;0.5 则候选无效&lt;br&gt;等权算子 2 与等面积加权算子 4 均有入口&lt;br&gt;逐点路线的 hi/hs 参照使用同一组空间权重" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2EDFA;strokeColor=#8D75AD;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="1204" width="820" height="405" as="geometry" />
+        </mxCell>
+        <mxCell id="tests_validation" value="&lt;b&gt;D 评定分支｜已执行&lt;/b&gt;&lt;br&gt;TB 全样本、nOIB 前 5% 与逐年指标&lt;br&gt;冰厚/雪深 × 两种干舷路线，各报 n/r/R^2/bias/RMSE&lt;br&gt;|TBOIB−SMOS|≤1.5 K 诊断子集另报&lt;br&gt;FYI/MYI、算子 A/B 差值与中心化 RMSE 对照&lt;br&gt;保存第二支雪面解；统计无根/双根及超 70‰ 比例&lt;br&gt;基线输出冻结；扩展保持同批窗口和独立文件名&lt;br&gt;OIB thickness 源于几何/静力平衡，非完全独立真值" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2EDFA;strokeColor=#8D75AD;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="1650" width="820" height="376" as="geometry" />
+        </mxCell>
+        <mxCell id="tests_next" value="&lt;b&gt;E 后续可接入｜计划，勿标为已跑&lt;/b&gt;&lt;br&gt;雪层数 1/2/5/10 与目标层厚度收敛&lt;br&gt;逐点 KT19_surf 温度、SMOS 质量/RFI/不确定度&lt;br&gt;不同 nOIB 门槛、足迹响应与协变分析&lt;br&gt;参数扰动、输入误差传播与样本独立性审查&lt;br&gt;CryoSat-2、MODIS、海冰密集度、ERA5 等&lt;br&gt;属于卫星尺度/周璐论文后续数据链，尚未并入&lt;br&gt;这张 2017 OIB–SMOS 基线反演链" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#84909C;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="2066" width="820" height="351" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;读图约定&lt;/b&gt;&lt;br&gt;蓝：观测/配准与评定；青：前向物理&lt;br&gt;橙：反演输入/两路求解；紫：实验分支&lt;br&gt;实线：主流程；虚线：测试从对应环节分出" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#84909C;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="2461" width="820" height="173" as="geometry" />
+        </mxCell>
+        <mxCell id="note" value="&lt;b&gt;复现边界&lt;/b&gt;&lt;br&gt;本图对应当前 2017 Data Synergy MATLAB 复现。&lt;br&gt;本地 SMOS 是 ICDC L3B PSP；论文写 EASE/L4，&lt;br&gt;其重采样算法与完整原作者离散代码未公开。&lt;br&gt;最近邻 EASE、Burke 递推及 Vb 外推均为&lt;br&gt;本项目可审计的实现选择；不能称逐位复现。&lt;br&gt;正式基线：Burke / midpoint / Vb 不截断 /&lt;br&gt;20 冰层 + 1 雪层 / 2.7 K 宇宙背景。" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#84909C;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="2677" width="820" height="331" as="geometry" />
+        </mxCell>
+        <mxCell id="source" value="&lt;b&gt;主要代码入口与结果口径&lt;/b&gt;&lt;br&gt;main.m → read_smos/read_oib → regrid_smos_to_ease&lt;br&gt;→ PSP2EASE / collocate_day.m&lt;br&gt;main_inversion.m → invert_pair.m&lt;br&gt;→ tb_forward.m → burke_stack.m&lt;br&gt;retrieval_config.m 统一科学参数&lt;br&gt;validate_tb_forward.m、validate_inversion_closure.m&lt;br&gt;analysis/tb_spatial_averaging/：四种算子与逐点反演&lt;br&gt;历史基线结果：inversion_2012_2015_&lt;br&gt;paper_baseline_v1_uncapped.*&lt;br&gt;更新：2026-11-03" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#84909C;strokeWidth=2;fontSize=20;fontColor=#243341;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=18;spacingRight=12;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="3045" width="820" height="463" as="geometry" />
+        </mxCell>
+        <mxCell id="e_smos" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="449" as="sourcePoint" />
+            <mxPoint x="420" y="493" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_oib" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1140" y="449" as="sourcePoint" />
+            <mxPoint x="1140" y="493" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_smos_join" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="726" as="sourcePoint" />
+            <mxPoint x="780" y="774" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="420" y="750" />
+              <mxPoint x="780" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_oib_join" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=none;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1140" y="726" as="sourcePoint" />
+            <mxPoint x="780" y="750" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1140" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_coll_input" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="1036" as="sourcePoint" />
+            <mxPoint x="780" y="1081" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_input_profile" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="1248" as="sourcePoint" />
+            <mxPoint x="780" y="1284" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_section_profile" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="1348" as="sourcePoint" />
+            <mxPoint x="780" y="1371" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_prof_diel" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="1618" as="sourcePoint" />
+            <mxPoint x="780" y="1637" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_diel_optics" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="1891" as="sourcePoint" />
+            <mxPoint x="780" y="1927" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_optics_rt" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="2126" as="sourcePoint" />
+            <mxPoint x="780" y="2162" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_rt_avg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="2404" as="sourcePoint" />
+            <mxPoint x="780" y="2438" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_avg_routes" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="2577" as="sourcePoint" />
+            <mxPoint x="780" y="2611" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_branch_ice" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="2675" as="sourcePoint" />
+            <mxPoint x="420" y="2698" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="780" y="2685" />
+              <mxPoint x="420" y="2685" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_branch_snow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="2685" as="sourcePoint" />
+            <mxPoint x="1140" y="2698" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1140" y="2685" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ice_solve" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="2979" as="sourcePoint" />
+            <mxPoint x="780" y="3019" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="420" y="3004" />
+              <mxPoint x="780" y="3004" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_snow_solve" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=none;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1140" y="2979" as="sourcePoint" />
+            <mxPoint x="780" y="3004" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1140" y="3004" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_solve_eval" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#63809A;strokeWidth=3;dashed=0;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="3201" as="sourcePoint" />
+            <mxPoint x="780" y="3237" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t_data" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9B7BBD;strokeWidth=3;dashed=1;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1481" y="875" as="sourcePoint" />
+            <mxPoint x="1559" y="450" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1518" y="875" />
+              <mxPoint x="1518" y="450" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t_phys" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9B7BBD;strokeWidth=3;dashed=1;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1481" y="1790" as="sourcePoint" />
+            <mxPoint x="1559" y="930" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1518" y="1790" />
+              <mxPoint x="1518" y="930" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t_solver" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9B7BBD;strokeWidth=3;dashed=1;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1481" y="2890" as="sourcePoint" />
+            <mxPoint x="1559" y="1410" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1518" y="2890" />
+              <mxPoint x="1518" y="1410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t_eval" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9B7BBD;strokeWidth=3;dashed=1;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1481" y="3360" as="sourcePoint" />
+            <mxPoint x="1559" y="1830" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1518" y="3360" />
+              <mxPoint x="1518" y="1830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,22 +1,29 @@
-% 2017 年论文第 5.1 节：OIB 飞行日与同日 SMOS 配准。
+% OIB 飞行日与同日网格化 SMOS 配准入口。
 % 在本目录运行 main。输出每个中心格的 TB、四个 OIB 均值和有效样本数。
 % 反演须调用论文引用的完整 L 波段前向模型；此脚本不以近似模型伪造结果。
 clc
-clear all
+clearvars -except useCache retrievalConfig
 
 
 matlabRoot = fileparts(mfilename('fullpath'));
-dataRoot = fullfile(fileparts(matlabRoot), 'data');
-figureRoot = fullfile(matlabRoot, 'figures');
-resultRoot = fullfile(matlabRoot, 'processed');
-addpath(matlabRoot, fullfile(matlabRoot, 'readdata'), ...
-    fullfile(matlabRoot, 'plot'));
-
-gridVersion = "EASE"; % 原版 EASE 是显式假设；论文未给出足够参数区分版本。
-yearsToProcess = [2012,2015];
-useCache = true;
-yearTag = strjoin(string(yearsToProcess), '_');
-cacheStem = "pairs_" + yearTag + "_same_day";
+addpath(matlabRoot);
+if ~exist('retrievalConfig', 'var') || isempty(retrievalConfig)
+    retrievalConfig = retrieval_config();
+end
+addpath(retrievalConfig.paths.readDataRoot, ...
+    retrievalConfig.paths.readSmapRoot, retrievalConfig.paths.plotRoot);
+dataRoot = retrievalConfig.paths.dataRoot;
+figureRoot = retrievalConfig.paths.figureRoot;
+resultRoot = retrievalConfig.paths.processedRoot;
+gridVersion = retrievalConfig.data.gridVersion;
+yearsToProcess = retrievalConfig.data.years;
+if retrievalConfig.data.brightnessTemperatureSource ~= "smos"
+    error('main:SMAPPipelineNotImplemented', ...
+        ['SMAP 读取接口和配置已就绪，但半轨逐格 UTC 选择与 OIB 配准尚未接入 ', ...
+        'main.m。请勿在接入前把 SMAP 配置误当成已运行的主结果。']);
+end
+if ~exist('useCache', 'var'), useCache = retrievalConfig.runtime.useCache; end
+cacheStem = retrievalConfig.output.pairsStem;
 cacheFile = fullfile(resultRoot, cacheStem + ".mat");
 cacheIsValid = false;
 if useCache && isfile(cacheFile)
@@ -44,15 +51,19 @@ else
     totalFlights = 0;
     for yearIndex = 1:numel(yearsToProcess)
         currentYear = yearsToProcess(yearIndex);
-        if currentYear <= 2013
+        oibConfig = retrievalConfig.data.oib;
+        if currentYear <= oibConfig.formalLastYear
             % 2012–2013 必须使用正式 IDCSI4，不回退到 Quick Look。
-            oibDir = fullfile(dataRoot, 'OIB', 'IDCSI4_L4', ...
+            oibDir = fullfile(dataRoot, ...
+                oibConfig.formalRelativeDirectory, ...
                 num2str(currentYear));
-            files = dir(fullfile(oibDir, 'IDCSI4_*.txt'));
+            files = dir(fullfile(oibDir, oibConfig.formalFilePattern));
         else
-            oibDir = fullfile(dataRoot, 'OIB', ...
-                'NSIDC-0708_QuickLook', sprintf('%d_GR_NASA', currentYear));
-            files = dir(fullfile(oibDir, 'OIB_*_IDCSI2*.txt'));
+            quickLookFolder = sprintf('%d%s', currentYear, ...
+                oibConfig.quickLookYearSuffix);
+            oibDir = fullfile(dataRoot, ...
+                oibConfig.quickLookRelativeDirectory, quickLookFolder);
+            files = dir(fullfile(oibDir, oibConfig.quickLookFilePattern));
         end
         [~, order] = sort({files.name});
         files = files(order);
@@ -71,16 +82,19 @@ else
             token = regexp(files(k).name, '(\d{8})', 'match', 'once');
             day = datetime(token, 'InputFormat', 'yyyyMMdd');
             oibFile = fullfile(files(k).folder, files(k).name);
-            smosFile = fullfile(dataRoot, 'smos', num2str(currentYear), ...
-                ['SMOS_TB_north_' token '.nc']);
+            smosConfig = retrievalConfig.data.smos;
+            smosFile = fullfile(dataRoot, smosConfig.relativeDirectory, ...
+                num2str(currentYear), sprintf(smosConfig.filePattern, token));
             if ~isfile(smosFile)
                 error('main:MissingSMOS', ...
                     '%s 缺少同日 SMOS 文件：%s', token, smosFile);
             end
             oib = read_oib(oibFile);
             smos = read_smos(smosFile);
-            smosEase = regrid_smos_to_ease(smos, gridVersion);
-            [dailyPairs, stats] = collocate_2017_day(oib, smosEase, day);
+            smosEase = grid_resampling.regrid_smos_to_ease( ...
+                smos, gridVersion);
+            [dailyPairs, stats] = collocate_day( ...
+                oib, smosEase, day, retrievalConfig);
             pairs = [pairs; dailyPairs]; %#ok<AGROW>
             summary = [summary; table(day, stats.rawPoints, ...
                 stats.qualityPoints, stats.tbOverlapCells, ...
@@ -106,8 +120,9 @@ else
 end
 
 coverageFigure = fullfile(figureRoot, ...
-    "pairs_" + yearTag + "_coverage.png");
-plot_2017_pairs(pairs, ease_grid(gridVersion), coverageFigure);
+    retrievalConfig.output.coverageFigureStem + ".png");
+plot_collocated_pairs(pairs, ...
+    grid_resampling.ease_grid(gridVersion), coverageFigure);
 fprintf('共 %d 次飞行，%d 条中心格配对；位置图：%s\n', ...
     height(summary), height(pairs), coverageFigure);
 % 工作区保留 pairs 与 summary。hi、hs 是 OIB 验证值，不是反演输出。

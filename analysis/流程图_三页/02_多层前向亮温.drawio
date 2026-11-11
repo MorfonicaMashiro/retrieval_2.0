@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Codex" version="24.7.17" pages="1">
+  <diagram id="02_多层前向亮温" name="02_多层前向亮温">
+    <mxGraphModel dx="1200" dy="510" grid="0" page="1" pageScale="1" pageWidth="1200" pageHeight="510" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="profile" value="&lt;b&gt;① 温度与盐度廓线&lt;/b&gt;&lt;br&gt;20 冰层 + 1 雪层；各层取中点温度&lt;br&gt;Rth=hs/ks+hi/ki；q=(Tw−Ts)/Rth&lt;br&gt;FYI：S=max[1.5,6.08e^(−5.81hi)+7.409e^(−0.5228hi)]&lt;br&gt;MYI：S(z)=1.6[1−cos(π z^(0.407/(z+0.573)))]" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF5E9;strokeColor=#236431;strokeWidth=2;fontSize=17;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="545" height="184" as="geometry" />
+        </mxCell>
+        <mxCell id="dielectric" value="&lt;b&gt;② 卤水体积与复介电常数&lt;/b&gt;&lt;br&gt;Vb=1000·ρpure(T)·S/F1(T)（‰）；基线不截断&lt;br&gt;Vant FYI：εice=3.10+0.0084Vb+i(0.037+0.00445Vb)&lt;br&gt;Vant MYI：εice=3.10+0.0084Vb+i(0.003+0.00435Vb)&lt;br&gt;干雪 Tiuri；海水 Klein–Swift Debye" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF5E9;strokeColor=#236431;strokeWidth=2;fontSize=17;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="625" y="20" width="545" height="184" as="geometry" />
+        </mxCell>
+        <mxCell id="optics" value="&lt;b&gt;③ 层界面与光学衰减&lt;/b&gt;&lt;br&gt;qj=√(εj−sin²θ)；Fresnel 反射 Rj=|rH/V|²&lt;br&gt;τj=exp[−2k0|Im(qj)|dj]，k0=2πf/c&lt;br&gt;同材数值层界面 R=0；物理界面用中点 ε&lt;br&gt;单位温度源重复递推，得到有效发射率 e_eff" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EDF5FA;strokeColor=#5286A3;strokeWidth=2;fontSize=18;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="30" y="239" width="545" height="174" as="geometry" />
+        </mxCell>
+        <mxCell id="rt" value="&lt;b&gt;④ Burke 自下而上亮温递推&lt;/b&gt;&lt;br&gt;海水边界 Ubottom=Tw(K)，向上穿过冰和雪&lt;br&gt;Aj=(1−τj)(1+Rjτj)&lt;br&gt;Uj=Tj(K)Aj+(1−Rj)τjU(j+1)&lt;br&gt;TBθ,p=(1−Rtop)Utop+(1−e_eff)×2.7 K" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EDF5FA;strokeColor=#5286A3;strokeWidth=2;fontSize=18;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="625" y="239" width="545" height="174" as="geometry" />
+        </mxCell>
+        <mxCell id="mean" value="&lt;b&gt;输出及物理敏感性分支&lt;/b&gt;&lt;br&gt;0–40°、H/V 算术平均；实验：Vb 70‰ 截断、冰层 1/20/100、界面中点/边界、Burke/上层反射、雪分层" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F3EFFA;strokeColor=#8C75AB;strokeWidth=2;fontSize=17;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="30" y="445" width="1140" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="p_d" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="576" y="112" as="sourcePoint" />
+            <mxPoint x="624" y="112" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="p_o" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="205" as="sourcePoint" />
+            <mxPoint x="300" y="238" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="d_r" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="898" y="205" as="sourcePoint" />
+            <mxPoint x="898" y="238" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o_r" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="576" y="326" as="sourcePoint" />
+            <mxPoint x="624" y="326" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r_mean" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="898" y="414" as="sourcePoint" />
+            <mxPoint x="600" y="444" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="898" y="430" />
+              <mxPoint x="600" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

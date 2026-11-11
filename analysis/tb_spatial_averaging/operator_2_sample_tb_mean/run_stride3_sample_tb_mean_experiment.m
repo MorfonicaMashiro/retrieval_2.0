@@ -1,0 +1,223 @@
+function [results, metricSummary, pairs, summary] = ...
+        run_stride3_sample_tb_mean_experiment(targetDays, outputStem)
+%RUN_STRIDE3_SAMPLE_TB_MEAN_EXPERIMENT 旧的逐样本 TB 前向诊断试验。
+%   每个 OIB 点先由当前 Burke 模型计算 TB，再对互不重叠的 3x3 EASE
+%   窗口求算术平均。反演仍由 SMOS TB 与平均干舷决定，因此复用经过逐字段
+%   核对的步长 3 基线求解根，只重算 TB 验证值和 1.5 K 子集。
+%   本函数不能评价逐点反演的 hi/hs；正式入口为
+%   run_stride3_pointwise_freeboard_inversion。
+
+    if nargin < 1
+        targetDays = datetime.empty(0, 1);
+    end
+    if nargin < 2 || strlength(string(outputStem)) == 0
+        outputStem = "stride3_sample_tb_mean_vb_uncapped_2012_2015";
+    end
+    targetDays = dateshift(datetime(targetDays(:)), 'start', 'day');
+    outputStem = string(outputStem);
+
+    operatorRoot = fileparts(mfilename('fullpath'));
+    matlabRoot = fileparts(fileparts(fileparts(operatorRoot)));
+    dataRoot = fullfile(fileparts(matlabRoot), 'data');
+    resultRoot = fullfile(operatorRoot, 'results', 'stride3');
+    figureRoot = fullfile(operatorRoot, 'figures', 'stride3');
+    addpath(matlabRoot, fullfile(matlabRoot, 'readdata'), ...
+        fullfile(matlabRoot, 'plot'), operatorRoot);
+    if ~isfolder(resultRoot), mkdir(resultRoot); end
+    if ~isfolder(figureRoot), mkdir(figureRoot); end
+
+    retrievalConfig = retrieval_config();
+    retrievalConfig.collocation.computeSampleMeanTB = true;
+    retrievalConfig.collocation.parameterWeighting = "none";
+    model = retrievalConfig.model;
+    operatorOptions = retrievalConfig.collocation;
+    gridVersion = retrievalConfig.data.gridVersion;
+    flightFiles = find_flight_files(dataRoot, targetDays);
+    if isempty(flightFiles)
+        error('run_stride3_sample_tb_mean_experiment:NoFlights', ...
+            '指定日期没有找到 2012/2015 OIB 飞行文件。');
+    end
+
+    pairs = table();
+    summary = table();
+    outputFile = fullfile(resultRoot, outputStem + ".mat");
+    timer = tic;
+    for flightIndex = 1:height(flightFiles)
+        day = flightFiles.day(flightIndex);
+        token = char(string(day, 'yyyyMMdd'));
+        oibFile = char(flightFiles.path(flightIndex));
+        smosFile = fullfile(dataRoot, 'smos', char(string(year(day))), ...
+            ['SMOS_TB_north_' token '.nc']);
+        if ~isfile(smosFile)
+            error('run_stride3_sample_tb_mean_experiment:MissingSMOS', ...
+                '%s 缺少同日 SMOS 文件：%s', token, smosFile);
+        end
+
+        oib = read_oib(oibFile);
+        smos = read_smos(smosFile);
+        smosEase = grid_resampling.regrid_smos_to_ease( ...
+            smos, gridVersion);
+        [dailyPairs, stats] = collocate_day( ...
+            oib, smosEase, day, retrievalConfig);
+        pairs = [pairs; dailyPairs]; %#ok<AGROW>
+        summary = [summary; table(day, stats.rawPoints, ...
+            stats.qualityPoints, stats.tbOverlapCells, stats.matchedCells, ...
+            stats.mixedTypeCells, stats.forwardPoints, ...
+            stats.pointForwardSeconds, stats.pairForwardSeconds, ...
+            stats.forwardSeconds, stats.centerStride, ...
+            stats.centerPhase(1), stats.centerPhase(2), ...
+            'VariableNames', {'day','rawPoints','qualityPoints', ...
+            'tbOverlapCells','matchedCells','mixedTypeCells', ...
+            'forwardPoints','pointForwardSeconds','pairForwardSeconds', ...
+            'forwardSeconds','centerStride','centerPhaseRow', ...
+            'centerPhaseCol'})]; %#ok<AGROW>
+
+        save(outputFile, 'pairs', 'summary', 'model', ...
+            'operatorOptions', 'gridVersion', 'retrievalConfig', '-v7.3');
+        elapsedSeconds = toc(timer);
+        etaSeconds = elapsedSeconds / flightIndex * ...
+            (height(flightFiles) - flightIndex);
+        fprintf(['[%d/%d, %5.1f%%] %s：逐点前向 %d 个，步长 3 配对 %d 条；' ...
+            '本日前向 %.1f s，累计 %.1f min，预计剩余 %.1f min。\n'], ...
+            flightIndex, height(flightFiles), ...
+            100 * flightIndex / height(flightFiles), token, ...
+            stats.forwardPoints, stats.matchedCells, ...
+            stats.forwardSeconds, elapsedSeconds / 60, etaSeconds / 60);
+    end
+
+    pairs = sortrows(pairs, {'day','row','col'});
+    summary = sortrows(summary, 'day');
+    [baselineResults, rootsSource, baselineMatch] = ...
+        load_and_verify_baseline(pairs, matlabRoot, targetDays);
+
+    results = baselineResults;
+    results.TBOIBMeanParameters = pairs.TBOIBMeanParameters;
+    results.TBOIBMeanSamples = pairs.TBOIBMeanSamples;
+    results.TBSampleMinusParameter = pairs.TBSampleMinusParameter;
+    results.tbFromOIB = results.TBOIBMeanSamples;
+    nearTB = abs(results.tbFromOIB - results.TB) <= 1.5;
+    sortedCounts = sort(results.nOIB(isfinite(results.nOIB)));
+    coverageThreshold = sortedCounts( ...
+        max(1, ceil(0.95 * numel(sortedCounts))));
+    highCoverage = results.nOIB >= coverageThreshold;
+    metricSummary = summarize_retrieval_subset( ...
+        results, true(height(results), 1), nearTB);
+    highCoverageFit = fit_retrieval( ...
+        results.TB(highCoverage), results.tbFromOIB(highCoverage));
+    highCoverageRow = metricSummary(1, :);
+    highCoverageRow.metric = "TB：OIB 样本数前 5%";
+    fitFields = {'n','correlation','rSquared','bias','rmse','slope','intercept'};
+    for fieldIndex = 1:numel(fitFields)
+        fieldName = fitFields{fieldIndex};
+        highCoverageRow.(fieldName) = highCoverageFit.(fieldName);
+    end
+    metricSummary = [metricSummary(1, :); highCoverageRow; ...
+        metricSummary(2:end, :)];
+    metricByYear = summarize_retrieval_by_year(results, nearTB, ...
+        fullfile(resultRoot, outputStem + "_metrics_by_year.csv"));
+
+    save(outputFile, 'pairs', 'summary', 'results', 'metricSummary', ...
+        'metricByYear', 'nearTB', 'highCoverage', 'coverageThreshold', ...
+        'model', 'operatorOptions', 'gridVersion', 'rootsSource', ...
+        'baselineMatch', 'retrievalConfig', '-v7.3');
+    writetable(pairs, fullfile(resultRoot, outputStem + "_pairs.csv"));
+    writetable(summary, fullfile(resultRoot, outputStem + "_summary.csv"));
+    writetable(results, fullfile(resultRoot, ...
+        outputStem + "_retrieval.csv"));
+    writetable(metricSummary, fullfile(resultRoot, ...
+        outputStem + "_metrics.csv"));
+
+    contextLabel = '步长 3，互不重叠 3×3 窗口，逐 OIB 样本计算 TB 后平均';
+    plot_retrieval_validation(results, nearTB, highCoverage, ...
+        figureRoot, contextLabel);
+    fprintf(['完成 %d 个飞行日、%d 条配对、%d 个逐点前向计算；' ...
+        '总用时 %.1f min。\n'], height(summary), height(pairs), ...
+        sum(summary.forwardPoints), toc(timer) / 60);
+    fprintf('结果：%s\n图件：%s\n', outputFile, figureRoot);
+    disp(metricSummary);
+end
+
+
+function flightFiles = find_flight_files(dataRoot, targetDays)
+    specifications = { ...
+        fullfile(dataRoot, 'OIB', 'IDCSI4_L4', '2012'), ...
+        'IDCSI4_*.txt'; ...
+        fullfile(dataRoot, 'OIB', 'NSIDC-0708_QuickLook', ...
+        '2015_GR_NASA'), 'OIB_*_IDCSI2*.txt'};
+    days = datetime.empty(0, 1);
+    paths = strings(0, 1);
+    for specificationIndex = 1:size(specifications, 1)
+        files = dir(fullfile(specifications{specificationIndex, 1}, ...
+            specifications{specificationIndex, 2}));
+        for fileIndex = 1:numel(files)
+            token = regexp(files(fileIndex).name, ...
+                '(\d{8})', 'match', 'once');
+            day = datetime(token, 'InputFormat', 'yyyyMMdd');
+            if isempty(targetDays) || ismember(day, targetDays)
+                days(end + 1, 1) = day; %#ok<AGROW>
+                paths(end + 1, 1) = string(fullfile( ...
+                    files(fileIndex).folder, files(fileIndex).name)); %#ok<AGROW>
+            end
+        end
+    end
+    flightFiles = sortrows(table(days, paths, ...
+        'VariableNames', {'day','path'}), 'day');
+end
+
+
+function [baselineResults, rootsSource, baselineMatch] = ...
+        load_and_verify_baseline(pairs, matlabRoot, targetDays)
+%LOAD_AND_VERIFY_BASELINE 验证算子变化没有改变反演输入，并复用求解根。
+
+    baselineFile = fullfile(matlabRoot, 'analysis', ...
+        'tb_spatial_averaging', 'baseline_parameter_mean_stride3', ...
+        'results', ...
+        'parameter_mean_vb_uncapped_fixed_temp_stride3_2012_2015.mat');
+    if ~isfile(baselineFile)
+        error('run_stride3_sample_tb_mean_experiment:MissingBaseline', ...
+            '缺少已验证的步长 3 基线反演结果：%s', baselineFile);
+    end
+    baseline = load(baselineFile, 'pairs', 'results', 'model', ...
+        'operatorOptions', 'referenceMatch');
+    if ~baseline.referenceMatch || ...
+            baseline.operatorOptions.centerStride ~= 3 || ...
+            ~isequal(baseline.operatorOptions.centerPhase, [2 2]) || ...
+            ~strcmp(baseline.model.radiativeTransferMode, 'burke') || ...
+            baseline.model.limitBrinePermittivity
+        error('run_stride3_sample_tb_mean_experiment:BaselineSettings', ...
+            '步长 3 基线的模型或相位设置与本轮不一致。');
+    end
+    baselinePairs = baseline.pairs;
+    baselineResults = baseline.results;
+    if ~isempty(targetDays)
+        baselinePairs = baselinePairs( ...
+            ismember(baselinePairs.day, targetDays), :);
+        baselineResults = baselineResults( ...
+            ismember(baselineResults.day, targetDays), :);
+    end
+    baselinePairs = sortrows(baselinePairs, {'day','row','col'});
+    baselineResults = sortrows(baselineResults, {'day','row','col'});
+    historicalFields = baselinePairs.Properties.VariableNames;
+    if ~isequaln(pairs(:, historicalFields), baselinePairs)
+        error('run_stride3_sample_tb_mean_experiment:PairMismatch', ...
+            '逐样本 TB 算子的配对输入与步长 3 基线不一致。');
+    end
+    resultInputFields = {'day','flight','row','col','TB','FBice', ...
+        'FBsnow','isMYI','hi','hs','nOIB'};
+    if ~isequaln(pairs(:, resultInputFields), ...
+            baselineResults(:, resultInputFields))
+        error('run_stride3_sample_tb_mean_experiment:ResultInputs', ...
+            '逐样本 TB 配对与复用反演根的输入不一致。');
+    end
+    maxParameterDelta = max(abs( ...
+        pairs.TBOIBMeanParameters - baselineResults.tbFromOIB));
+    if maxParameterDelta > 1e-10
+        error('run_stride3_sample_tb_mean_experiment:ForwardMismatch', ...
+            '当前平均参数 TB 与步长 3 基线不一致，最大差 %.3g K。', ...
+            maxParameterDelta);
+    end
+    rootsSource = string(baselineFile);
+    baselineMatch = true;
+    fprintf(['逐字段核对通过：配对、反演输入和平均参数 TB 与步长 3 基线一致；' ...
+        '复用反演根。\n']);
+end

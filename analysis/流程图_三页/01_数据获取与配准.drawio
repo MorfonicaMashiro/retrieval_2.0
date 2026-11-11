@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" agent="Codex" version="24.7.17" pages="1">
+  <diagram id="01_数据获取与配准" name="01_数据获取与配准">
+    <mxGraphModel dx="1200" dy="510" grid="0" page="1" pageScale="1" pageWidth="1200" pageHeight="510" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="smos" value="&lt;b&gt;SMOS 逐日亮温&lt;/b&gt;&lt;br&gt;ICDC L3B v3，源网格 896×608，EPSG:3413&lt;br&gt;读取同日 TB、nPair；−999 → NaN" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EDF5FA;strokeColor=#5286A3;strokeWidth=2;fontSize=18;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="30" y="20" width="530" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="oib" value="&lt;b&gt;OIB 逐航次数据&lt;/b&gt;&lt;br&gt;2012/13 IDCSI4；2014/15 Quick Look&lt;br&gt;−99999 → NaN；FBice = FBsnow − hs" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EDF5FA;strokeColor=#5286A3;strokeWidth=2;fontSize=18;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="640" y="20" width="530" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="smos_ease" value="&lt;b&gt;SMOS 最近邻重采样到原版 EASE&lt;/b&gt;&lt;br&gt;目标 1441×1441，格距 12,533.76 m&lt;br&gt;目标中心逆映射至源像元；nPair≤0 保留缺测" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF5E9;strokeColor=#236431;strokeWidth=2;fontSize=18;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="30" y="150" width="530" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="oib_ease" value="&lt;b&gt;OIB 航迹点投影与落格&lt;/b&gt;&lt;br&gt;经纬度 → EASE (x,y)，只变位置、不插值&lt;br&gt;col=floor((x−xMin)/Δ)+1；row=floor((yMax−y)/Δ)+1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EAF5E9;strokeColor=#236431;strokeWidth=2;fontSize=18;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="640" y="150" width="530" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="match" value="&lt;b&gt;同日 3×3 窗口配准，得到一条中心格输入&lt;/b&gt;&lt;br&gt;以有效 TB 中心格汇集本格及周围 8 格 OIB 原始点；只保留单一 FYI/MYI、无开水/薄冰/灰冰的样本&lt;br&gt;同一批 M 点分别取均值：FBsnow、hs、FBice、hi；输入 TBobs、冰型、两种干舷；hi/hs 留作验证" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFF3E5;strokeColor=#C78948;strokeWidth=2;fontSize=17;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="135" y="280" width="930" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="counts" value="&lt;b&gt;2012—2015 配对轨迹与网格数&lt;/b&gt;&lt;br&gt;2012：14 航次 / 13 有效 / 3,690 格     2013：10 / 9 / 4,389 格     2014：15 / 15 / 5,433 格     2015：9 / 9 / 2,852 格&lt;br&gt;合计 48 航次、46 条有有效配对、16,364 格；论文年份 2012+2015：23 航次、22 条有效、6,542 格" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F3EFFA;strokeColor=#8C75AB;strokeWidth=2;fontSize=17;fontColor=#163428;fontFamily=Microsoft YaHei;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=8;" vertex="1" parent="1">
+          <mxGeometry x="30" y="410" width="1140" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="295" y="116" as="sourcePoint" />
+            <mxPoint x="295" y="149" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="905" y="116" as="sourcePoint" />
+            <mxPoint x="905" y="149" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="s2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="295" y="246" as="sourcePoint" />
+            <mxPoint x="600" y="279" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="295" y="262" />
+              <mxPoint x="600" y="262" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="o2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=none;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="905" y="246" as="sourcePoint" />
+            <mxPoint x="600" y="262" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="905" y="262" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="match_count" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#236431;strokeWidth=2;dashed=0;endArrow=block;endFill=1;endSize=7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="600" y="386" as="sourcePoint" />
+            <mxPoint x="600" y="409" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

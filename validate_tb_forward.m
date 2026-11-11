@@ -10,18 +10,18 @@ function validation = validate_tb_forward(outputDirectory)
     if nargin < 1
         outputDirectory = '';
     end
-    model = struct('surfaceTempC', -30, 'waterTempC', -1.8, ...
-        'waterSalinity', 33, 'rhoWater', 1024, ...
-        'rhoIce', 915, 'rhoSnow', 320);
+    retrievalConfig = retrieval_config();
+    model = retrievalConfig.model;
     % 固定参数来自 Data Synergy 论文 Sect. 2.1（PDF pp. 4--5）：
     % Tsurf=-30 degC, Twater=-1.8 degC, Swater=33 g/kg，密度为
     % rho_water/rho_ice/rho_snow=1024/915/320 kg/m^3。
 
-    scenario = ["I"; "II"; "III"; "IV"; "V"; "VI"; "VII"; "VIII"];
-    isMYI = [false; false; false; false; true; true; true; true];
-    hi = [0.5; 1.0; 1.5; 2.5; 1.5; 2.5; 3.0; 5.0];
-    hs = [0.05; 0.03; 0.10; 0.25; 0.15; 0.15; 0.35; 0.40];
-    tbPaper = [231.5; 238.2; 243.7; 246.5; 243.8; 248.9; 252.0; 250.4];
+    table1 = retrievalConfig.reference.table1;
+    scenario = table1.scenario;
+    isMYI = table1.isMYI;
+    hi = table1.hiM;
+    hs = table1.hsM;
+    tbPaper = table1.tbK;
     % hi、hs、冰型和 TB 均逐项抄录自该论文 Sect. 3、Table 1（PDF p. 10）。
     tbModel = nan(size(hi));
     maxBrinePermille = nan(size(hi));
@@ -36,10 +36,11 @@ function validation = validate_tb_forward(outputDirectory)
     scenarios = table(scenario, isMYI, hi, hs, tbPaper, tbModel, ...
         differenceK, maxBrinePermille, brineValidityExceeded);
 
-    testHi = [0.5; 1.0; 2.5; 5.0; 0.5; 1.5; 3.0; 5.0];
-    testHs = [0.05; 0.10; 0.25; 0.40; 0.05; 0.15; 0.35; 0.40];
-    testMYI = [false; false; false; false; true; true; true; true];
-    layerCounts = [1, 20, 100];
+    layerSensitivity = retrievalConfig.validation.layerSensitivity;
+    testHi = layerSensitivity.hiM;
+    testHs = layerSensitivity.hsM;
+    testMYI = layerSensitivity.isMYI;
+    layerCounts = layerSensitivity.iceLayerCounts;
     % 层数敏感性设置来自用户提供的 Improving L-band radiation model 论文
     % Sect. 3（PDF p. 5）：N=1 与 20 差异大，N=20 与 100 的 TB 差异<0.1 K。
     layerResults = cell(size(layerCounts));
@@ -64,13 +65,15 @@ function validation = validate_tb_forward(outputDirectory)
     validation = struct('scenarios', scenarios, 'layers', layers, ...
         'scenarioRMSEK', sqrt(mean(differenceK.^2)), ...
         'scenarioBiasK', mean(differenceK), ...
-        'maxAbs20to100K', max(abs(layers.delta100minus20)));
+        'maxAbs20to100K', max(abs(layers.delta100minus20)), ...
+        'retrievalConfig', retrievalConfig);
 
     if strlength(string(outputDirectory)) > 0
         if ~isfolder(outputDirectory), mkdir(outputDirectory); end
+        outputStem = retrievalConfig.output.forwardValidationStem;
         writetable(scenarios, fullfile(outputDirectory, ...
-            'tb_forward_table1_validation.csv'));
+            outputStem + "_table1.csv"));
         writetable(layers, fullfile(outputDirectory, ...
-            'tb_forward_layer_sensitivity.csv'));
+            outputStem + "_layers.csv"));
     end
 end
